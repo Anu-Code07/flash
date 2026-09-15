@@ -1,0 +1,10 @@
+[package]
+name = "flash-sema"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-span = { workspace = true }
+flash-ast = { workspace = true }
+flash-stl = { workspace = true }
+flash-ir = { workspace = true }

@@ -1,0 +1,8 @@
+[package]
+name = "flash-stl"
+version.workspace = true
+edition.workspace = true
+description = "Flash Standard Library — C++ STL-like types and built-in UI primitives"
+
+[dependencies]
+flash-span = { workspace = true }

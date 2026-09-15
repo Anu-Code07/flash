@@ -1,0 +1,9 @@
+[package]
+name = "ui-suite"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-driver = { workspace = true }
+flash-runtime = { workspace = true }
+flash-ir = { workspace = true }

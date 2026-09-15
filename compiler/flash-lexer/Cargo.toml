@@ -1,0 +1,7 @@
+[package]
+name = "flash-lexer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-span = { workspace = true }

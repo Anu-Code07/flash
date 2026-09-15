@@ -1,0 +1,12 @@
+[package]
+name = "flash-parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-span = { workspace = true }
+flash-lexer = { workspace = true }
+flash-ast = { workspace = true }
+
+[dev-dependencies]
+ui-suite = { path = "../../tests/ui-suite" }

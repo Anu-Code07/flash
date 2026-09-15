@@ -1,0 +1,8 @@
+[package]
+name = "flash-ir"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-span = { workspace = true }
+flash-stl = { workspace = true }

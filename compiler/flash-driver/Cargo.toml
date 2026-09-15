@@ -1,0 +1,13 @@
+[package]
+name = "flash-driver"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-span = { workspace = true }
+flash-lexer = { workspace = true }
+flash-ast = { workspace = true }
+flash-parser = { workspace = true }
+flash-sema = { workspace = true }
+flash-ir = { workspace = true }
+flash-stl = { workspace = true }

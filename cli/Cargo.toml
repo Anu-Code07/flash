@@ -1,0 +1,14 @@
+[package]
+name = "flash-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "flash"
+path = "src/main.rs"
+
+[dependencies]
+flash-driver = { workspace = true }
+flash-runtime = { workspace = true }
+flash-platform = { workspace = true }
+flash-ir = { workspace = true }

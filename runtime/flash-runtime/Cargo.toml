@@ -1,0 +1,8 @@
+[package]
+name = "flash-runtime"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flash-ir = { workspace = true }
+flash-platform = { workspace = true }

@@ -1,0 +1,14 @@
+[package]
+name = "flash-platform"
+version.workspace = true
+edition.workspace = true
+description = "Mobile-first platform targets: iOS (UIKit), Android (View), Web (WASM/DOM)"
+
+[dependencies]
+flash-ir = { workspace = true }
+
+[features]
+default = []
+ios = []
+android = []
+web = []

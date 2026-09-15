@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = [
+    "compiler/flash-span",
+    "compiler/flash-lexer",
+    "compiler/flash-ast",
+    "compiler/flash-parser",
+    "compiler/flash-sema",
+    "compiler/flash-ir",
+    "compiler/flash-driver",
+    "stl/flash-stl",
+    "runtime/flash-runtime",
+    "platform/flash-platform",
+    "cli",
+    "tests/ui-suite",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Anurag Kumar Singh"]
+
+[workspace.dependencies]
+flash-span = { path = "compiler/flash-span" }
+flash-lexer = { path = "compiler/flash-lexer" }
+flash-ast = { path = "compiler/flash-ast" }
+flash-parser = { path = "compiler/flash-parser" }
+flash-sema = { path = "compiler/flash-sema" }
+flash-ir = { path = "compiler/flash-ir" }
+flash-driver = { path = "compiler/flash-driver" }
+flash-stl = { path = "stl/flash-stl" }
+flash-runtime = { path = "runtime/flash-runtime" }
+flash-platform = { path = "platform/flash-platform" }
