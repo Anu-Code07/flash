@@ -183,3 +183,10 @@ Runtime layout engine (Rust, ~2k LOC):
 - **Implicit animations on layout**: Until Phase 5b, layout changes are instant or platform-default.
 
 State these in benchmark reports. Do not claim superiority without measuring.
+
+---
+
+## Related docs
+
+- [Flash vs KMP vs Flutter](comparison.md)
+- [README](../README.md) — project status and repo layout
