@@ -18,6 +18,7 @@ cargo run -p flash-cli -- run examples/counter/home.ui
 
 ## Design docs
 
+- [Developer guide — UI + business logic](docs/developer-guide.md)
 - [Flash vs KMP vs Flutter](docs/comparison.md)
 - [Animation and layout — known weaknesses and mitigations](docs/animation-and-layout.md)
 
