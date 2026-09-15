@@ -4,6 +4,7 @@
 //! available to every `.ui` file without imports.
 
 pub mod types;
+pub mod widgets;
 pub mod builtins;
 pub mod registry;
 pub mod collections;
@@ -15,6 +16,7 @@ pub mod extensions;
 pub mod logger;
 
 pub use types::*;
+pub use widgets::*;
 pub use builtins::*;
 pub use registry::StlRegistry;
 pub use collections::CollectionFn;

@@ -1,0 +1,88 @@
+// Flash-exclusive widgets showcase — real patterns, minimal boilerplate
+
+@provider Checkout {
+    @state qty: Int = 1
+    @state promo: String = ""
+
+    @action increment() { qty++ }
+    @action decrement() { if qty > 1 { qty-- } }
+}
+
+@provider Auth {
+    @state otp: String = ""
+    @state otpExpires: Int = 300
+
+    @action submitOtp() { /* verify */ }
+}
+
+screen Showcase {
+    @inject checkout: Checkout
+    @inject auth: Auth
+
+    KeyboardSafe {
+        ScrollView {
+            Column {
+                // ── Async loading (replaces manual match) ─────────────
+                Text("AsyncView").font(weight: .bold).font_size(20)
+                AsyncView(flights.value) {
+                    loading -> SkeletonList(rows: 3)
+                    empty   -> EmptyState("No results", "Try again later")
+                    error   -> ErrorState { await flights.load() }
+                    data    -> Text("Loaded!")
+                }
+
+                Divider().margin(vertical: 16)
+
+                // ── Forms: OTP + currency ─────────────────────────────
+                Text("PinField + CountdownLabel").font(weight: .bold)
+                PinField(length: 6) {
+                    auth.submitOtp()
+                }
+                CountdownLabel(auth.otpExpires)
+
+                Divider().margin(vertical: 16)
+
+                // ── Commerce ──────────────────────────────────────────
+                Text("QuantityStepper + PriceTag").font(weight: .bold)
+                Row {
+                    QuantityStepper(checkout.qty, min: 1, max: 10) {
+                        checkout.qty = value
+                    }
+                    PriceTag(price: 29.99, sale: 19.99)
+                }
+
+                Divider().margin(vertical: 16)
+
+                // ── Copyable referral code ────────────────────────────
+                Text("CopyableText").font(weight: .bold)
+                CopyableText("FLASH-2026-REF")
+
+                Divider().margin(vertical: 16)
+
+                // ── Custom component built from primitives ────────────
+                Text("Custom component").font(weight: .bold)
+                PromoCard(code: "SAVE20", discount: 20)
+            }
+            .padding(16)
+        }
+
+        BottomCTA("Checkout") {
+            navigate("/payment")
+        }
+    }
+    .safe_area()
+}
+
+component PromoCard(code: String, discount: Int) {
+    Row {
+        Column {
+            Text("Promo: ${code}").font(weight: .semibold)
+            Text("${discount}% off").color(.accent)
+        }
+        .flex(1)
+        CopyableText(code)
+    }
+    .padding(12)
+    .background(.surface)
+    .border_radius(8)
+}

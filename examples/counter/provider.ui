@@ -7,9 +7,7 @@
 
     @action increment() {
         count++
-        if count > high_score {
-            high_score = count
-        }
+        high_score = count
     }
 
     @action decrement() {

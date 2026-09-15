@@ -1,8 +1,7 @@
 //! Fine-grained reactive update engine.
-//! `count` mutation → dependency lookup → single `set_prop` call.
 
-use flash_ir::{DepTable, HandlerBody, HandlerId, IrExpr, PropKey, ScreenIr, SlotId, UpdateOp};
-use crate::renderer::{MockRenderer, PropValue, RenderCall};
+use flash_ir::{HandlerBody, HandlerId, IrExpr, PropKey, ScreenIr, UpdateOp};
+use crate::renderer::{MockRenderer, PropValue};
 use crate::state::SlotStore;
 
 pub struct ReactiveEngine {
@@ -26,26 +25,43 @@ impl ReactiveEngine {
     }
 
     pub fn fire_handler(&mut self, handler_id: HandlerId) {
-        let handler = self.screen.handlers.iter()
+        let body = self.screen.handlers.iter()
             .find(|h| h.id == handler_id)
-            .expect("handler not found");
+            .expect("handler not found")
+            .body
+            .clone();
+        self.execute_handler_body(&body);
+    }
 
-        match &handler.body {
+    fn execute_handler_body(&mut self, body: &HandlerBody) {
+        match body {
             HandlerBody::Increment(slot) => self.slots.increment(*slot),
+            HandlerBody::Decrement(slot) => {
+                let v = self.slots.get_int(*slot) - 1;
+                self.slots.set_int(*slot, v);
+            }
             HandlerBody::Assign { slot, value, .. } => {
                 if let IrExpr::Int(v) = value {
                     self.slots.set_int(*slot, *v);
                 }
             }
-            HandlerBody::Decrement(slot) => {
-                let v = self.slots.get_int(*slot) - 1;
-                self.slots.set_int(*slot, v);
+            HandlerBody::InvokeAction(idx) => {
+                let ops = self.screen.actions
+                    .get(*idx as usize)
+                    .map(|a| a.body.clone())
+                    .unwrap_or_default();
+                for op in ops {
+                    self.execute_handler_body(&op);
+                }
+            }
+            HandlerBody::Sequence(ops) => {
+                for op in ops {
+                    self.execute_handler_body(op);
+                }
             }
         }
     }
 
-    /// Flush dirty slots → evaluate update ops → apply to renderer.
-    /// Only affected nodes are updated — no full tree rebuild.
     pub fn flush(&mut self, renderer: &mut MockRenderer) {
         let dirty = self.slots.drain_dirty();
         for slot in dirty {
@@ -59,15 +75,26 @@ impl ReactiveEngine {
     }
 
     fn eval_update_op(&self, op: &UpdateOp) -> PropValue {
-        // For MVP: find the expr via static_props pattern or inline eval
-        // The update op's expr index maps to screen exprs; for counter we hardcode concat
+        let expr = self.screen.exprs.get(op.expr.0 as usize);
+        let text = expr
+            .map(|e| self.eval_ir_expr(e))
+            .unwrap_or_default();
         match op.key {
-            PropKey::Text => {
-                let count = self.slots.get_int(SlotId(0));
-                PropValue::Str(format!("Count: {}", count))
-            }
-            PropKey::Title => PropValue::Str(String::new()),
-            _ => PropValue::Str(String::new()),
+            PropKey::Text | PropKey::Title => PropValue::Str(text),
+            _ => PropValue::Str(text),
+        }
+    }
+
+    fn eval_ir_expr(&self, expr: &IrExpr) -> String {
+        match expr {
+            IrExpr::Int(v) => v.to_string(),
+            IrExpr::Float(v) => v.to_string(),
+            IrExpr::Bool(v) => v.to_string(),
+            IrExpr::Str(s) => s.clone(),
+            IrExpr::Slot(slot) => self.slots.get_int(*slot).to_string(),
+            IrExpr::Concat(parts) => parts.iter().map(|p| self.eval_ir_expr(p)).collect(),
+            IrExpr::Add(slot, v) => (self.slots.get_int(*slot) + *v).to_string(),
+            IrExpr::Error => String::new(),
         }
     }
 
@@ -83,9 +110,7 @@ impl ReactiveEngine {
             };
             renderer.set_prop(prop.node, prop.key, value);
         }
-        // Apply initial dynamic bindings
-        for (i, op) in self.screen.update_ops.iter().enumerate() {
-            let _ = i;
+        for op in &self.screen.update_ops {
             let value = self.eval_update_op(op);
             renderer.set_prop(op.node, op.key, value);
         }

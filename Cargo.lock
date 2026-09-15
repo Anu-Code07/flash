@@ -54,6 +54,7 @@ dependencies = [
  "flash-ast",
  "flash-lexer",
  "flash-span",
+ "flash-stl",
  "ui-suite",
 ]
 

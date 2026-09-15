@@ -7,6 +7,7 @@ edition.workspace = true
 flash-span = { workspace = true }
 flash-lexer = { workspace = true }
 flash-ast = { workspace = true }
+flash-stl = { workspace = true }
 
 [dev-dependencies]
 ui-suite = { path = "../../tests/ui-suite" }

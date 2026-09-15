@@ -12,10 +12,10 @@ pub struct CompileResult {
 
 pub fn compile(source: &str) -> Result<CompileResult, CompileError> {
     let file = FileId(0);
-    let parsed = parse(source, file).map_err(|errors| CompileError::Parse(errors))?;
+    let mut parsed = parse(source, file).map_err(|errors| CompileError::Parse(errors))?;
 
     let mut compiler = Compiler::new();
-    let ir = compiler.compile(&parsed.ast, &parsed.interner).ok_or_else(|| {
+    let ir = compiler.compile(&parsed.ast, &mut parsed.interner).ok_or_else(|| {
         CompileError::Semantic(compiler.diagnostics().to_vec())
     })?;
 

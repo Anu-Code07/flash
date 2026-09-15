@@ -3,6 +3,7 @@
 use flash_ast::*;
 use flash_lexer::{tokenize, Token, TokenKind};
 use flash_span::{FileId, Interner, Span, Symbol};
+use flash_stl::widgets::block_is_handler;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -60,6 +61,9 @@ impl Parser {
     }
 
     fn parse_item(&mut self) -> Result<Item, ParseError> {
+        if self.check(&TokenKind::At) {
+            return self.parse_at_item();
+        }
         if self.check(&TokenKind::Screen) {
             return Ok(Item::Screen(self.parse_screen()?));
         }
@@ -69,7 +73,127 @@ impl Parser {
         if self.check(&TokenKind::Use) {
             return Ok(Item::Import(self.parse_import()?));
         }
-        Err(self.error("expected screen, component, or use"))
+        Err(self.error("expected @provider, screen, component, or use"))
+    }
+
+    fn parse_at_item(&mut self) -> Result<Item, ParseError> {
+        self.expect(&TokenKind::At)?;
+        let kw = self.parse_ann_name()?;
+        let name = self.interner.get(kw);
+        if name == "provider" {
+            return Ok(Item::Provider(self.parse_provider()?));
+        }
+        Err(self.error(&format!("unknown @ annotation: {}", name)))
+    }
+
+    /// Annotation names after `@` — `state` is a lexer keyword, so handle it explicitly.
+    fn parse_ann_name(&mut self) -> Result<Symbol, ParseError> {
+        if self.check(&TokenKind::State) {
+            self.advance();
+            return Ok(self.interner.intern("state"));
+        }
+        self.expect_ident()
+    }
+
+    fn parse_provider(&mut self) -> Result<ProviderDef, ParseError> {
+        let start = self.current_span();
+        let (scope, family_key) = if self.check(&TokenKind::LParen) {
+            self.parse_provider_scope()?
+        } else {
+            (ProviderScope::Screen, None)
+        };
+        let name = self.expect_ident()?;
+        let params = if self.check(&TokenKind::LParen) {
+            self.parse_params()?
+        } else {
+            Vec::new()
+        };
+        self.expect(&TokenKind::LBrace)?;
+
+        let mut states = Vec::new();
+        let mut actions = Vec::new();
+
+        while !self.check(&TokenKind::RBrace) && !self.check(&TokenKind::Eof) {
+            if self.check(&TokenKind::At) {
+                self.advance();
+                let ann = self.parse_ann_name()?;
+                let ann_name = self.interner.get(ann);
+                if ann_name == "state" {
+                    states.push(self.parse_provider_state()?);
+                } else if ann_name == "action" || ann_name == "async_action" {
+                    let is_async = ann_name == "async_action";
+                    actions.push(self.parse_action(is_async)?);
+                } else {
+                    return Err(self.error(&format!("unknown @ in provider: {}", ann_name)));
+                }
+            } else {
+                return Err(self.error("expected @state or @action in provider"));
+            }
+        }
+        self.expect(&TokenKind::RBrace)?;
+        Ok(ProviderDef {
+            name,
+            scope,
+            family_key,
+            params,
+            states,
+            actions,
+            span: start.merge(self.current_span()),
+        })
+    }
+
+    fn parse_provider_scope(&mut self) -> Result<(ProviderScope, Option<Symbol>), ParseError> {
+        self.expect(&TokenKind::LParen)?;
+        let mut scope = ProviderScope::Screen;
+        let mut family_key = None;
+        while !self.check(&TokenKind::RParen) {
+            let key = self.expect_ident()?;
+            self.expect(&TokenKind::Colon)?;
+            if self.interner.get(key) == "scope" {
+                let val = self.expect_ident()?;
+                scope = match self.interner.get(val) {
+                    "App" => ProviderScope::App,
+                    "Screen" => ProviderScope::Screen,
+                    "Family" => ProviderScope::Family,
+                    other => return Err(self.error(&format!("unknown scope: {}", other))),
+                };
+            } else if self.interner.get(key) == "key" {
+                family_key = Some(self.expect_ident()?);
+            }
+            if self.check(&TokenKind::Comma) {
+                self.advance();
+            }
+        }
+        self.expect(&TokenKind::RParen)?;
+        Ok((scope, family_key))
+    }
+
+    fn parse_provider_state(&mut self) -> Result<StateDef, ParseError> {
+        let start = self.current_span();
+        let name = self.expect_ident()?;
+        self.expect(&TokenKind::Colon)?;
+        let ty = self.parse_type()?;
+        self.expect(&TokenKind::Eq)?;
+        let init = self.parse_expr()?;
+        Ok(StateDef { name, ty, init, span: start.merge(self.current_span()) })
+    }
+
+    fn parse_action(&mut self, is_async: bool) -> Result<ActionDef, ParseError> {
+        let start = self.current_span();
+        let name = self.expect_ident()?;
+        let params = if self.check(&TokenKind::LParen) {
+            self.parse_params()?
+        } else {
+            Vec::new()
+        };
+        let handler = self.parse_handler()?;
+        Ok(ActionDef {
+            name,
+            params,
+            is_async,
+            handler,
+            span: start.merge(self.current_span()),
+        })
     }
 
     fn parse_screen(&mut self) -> Result<ScreenDef, ParseError> {
@@ -83,30 +207,138 @@ impl Parser {
         };
         self.expect(&TokenKind::LBrace)?;
 
+        let mut injects = Vec::new();
+        let mut listens = Vec::new();
         let mut state = Vec::new();
         let mut lifecycle = Vec::new();
         let mut body = Vec::new();
 
         while !self.check(&TokenKind::RBrace) && !self.check(&TokenKind::Eof) {
-            if self.check(&TokenKind::State) {
+            if self.check(&TokenKind::At) {
+                self.advance();
+                let ann = self.parse_ann_name()?;
+                let ann_name = self.interner.get(ann);
+                if ann_name == "inject" {
+                    injects.push(self.parse_inject()?);
+                } else if ann_name == "listen" {
+                    listens.push(self.parse_listen()?);
+                } else {
+                    return Err(self.error(&format!("unknown @ in screen: {}", ann_name)));
+                }
+            } else if self.check(&TokenKind::State) {
                 state.push(self.parse_state()?);
             } else if self.check(&TokenKind::OnLoad) || self.check(&TokenKind::OnAppear) || self.check(&TokenKind::OnDispose) {
                 lifecycle.push(self.parse_lifecycle()?);
+            } else if self.check(&TokenKind::Match) {
+                body.push(ScreenBodyItem::Match(self.parse_match()?));
             } else {
-                body.push(self.parse_node()?);
+                body.push(ScreenBodyItem::Node(self.parse_node()?));
             }
         }
         self.expect(&TokenKind::RBrace)?;
-        let end = self.current_span();
 
         Ok(ScreenDef {
             name,
             params,
+            injects,
+            listens,
             state,
             lifecycle,
             body,
-            span: start.merge(end),
+            span: start.merge(self.current_span()),
         })
+    }
+
+    fn parse_inject(&mut self) -> Result<InjectDef, ParseError> {
+        let start = self.current_span();
+        let name = self.expect_ident()?;
+        self.expect(&TokenKind::Colon)?;
+        let ty = self.parse_type()?;
+        let family_args = if self.check(&TokenKind::LParen) {
+            self.expect(&TokenKind::LParen)?;
+            let mut args = Vec::new();
+            if !self.check(&TokenKind::RParen) {
+                loop {
+                    args.push(self.parse_expr()?);
+                    if self.check(&TokenKind::Comma) {
+                        self.advance();
+                    } else {
+                        break;
+                    }
+                }
+            }
+            self.expect(&TokenKind::RParen)?;
+            args
+        } else {
+            Vec::new()
+        };
+        Ok(InjectDef { name, ty, family_args, span: start.merge(self.current_span()) })
+    }
+
+    fn parse_listen(&mut self) -> Result<ListenDef, ParseError> {
+        let start = self.current_span();
+        self.expect(&TokenKind::LParen)?;
+        let expr = self.parse_expr()?;
+        self.expect(&TokenKind::RParen)?;
+        let handler = self.parse_handler_with_binding()?;
+        Ok(ListenDef { expr, binding: handler.0, handler: handler.1, span: start.merge(self.current_span()) })
+    }
+
+    fn parse_handler_with_binding(&mut self) -> Result<(Symbol, HandlerId), ParseError> {
+        self.expect(&TokenKind::LBrace)?;
+        let binding = self.expect_ident()?;
+        self.expect(&TokenKind::In)?;
+        let mut stmts = Vec::new();
+        while !self.check(&TokenKind::RBrace) {
+            stmts.push(self.parse_stmt()?);
+        }
+        self.expect(&TokenKind::RBrace)?;
+        let span = self.current_span();
+        let handler = Handler { stmts, span };
+        let id = self.ast.add_handler(handler, span);
+        Ok((binding, id))
+    }
+
+    fn parse_match(&mut self) -> Result<MatchDef, ParseError> {
+        let start = self.current_span();
+        self.expect(&TokenKind::Match)?;
+        let expr = self.parse_expr()?;
+        self.expect(&TokenKind::LBrace)?;
+        let mut arms = Vec::new();
+        while !self.check(&TokenKind::RBrace) {
+            arms.push(self.parse_match_arm()?);
+        }
+        self.expect(&TokenKind::RBrace)?;
+        Ok(MatchDef { expr, arms, span: start.merge(self.current_span()) })
+    }
+
+    fn parse_match_arm(&mut self) -> Result<MatchArm, ParseError> {
+        let start = self.current_span();
+        let pattern = self.parse_match_pattern()?;
+        self.expect(&TokenKind::Arrow)?;
+        let body = self.parse_child_block()?;
+        Ok(MatchArm { pattern, body, span: start.merge(self.current_span()) })
+    }
+
+    fn parse_match_pattern(&mut self) -> Result<MatchPattern, ParseError> {
+        if self.check(&TokenKind::Underscore) {
+            self.advance();
+            return Ok(MatchPattern::Wildcard);
+        }
+        let name = self.expect_ident()?;
+        if self.check(&TokenKind::LParen) {
+            self.expect(&TokenKind::LParen)?;
+            let binding = if self.check(&TokenKind::RParen) {
+                None
+            } else {
+                let b = self.expect_ident()?;
+                Some(b)
+            };
+            self.expect(&TokenKind::RParen)?;
+            Ok(MatchPattern::Call { name, binding })
+        } else {
+            Ok(MatchPattern::Ident(name))
+        }
     }
 
     fn parse_component(&mut self) -> Result<ComponentDef, ParseError> {
@@ -231,11 +463,7 @@ impl Parser {
         }
 
         let (children, handler) = if self.check(&TokenKind::LBrace) {
-            // Disambiguate: Button/TextField → handler, containers → children
-            let is_handler = matches!(
-                self.interner.get(kind),
-                "Button" | "TextField"
-            );
+            let is_handler = block_is_handler(self.interner.get(kind));
             if is_handler {
                 let h = self.parse_handler()?;
                 (Vec::new(), Some(h))
@@ -335,6 +563,15 @@ impl Parser {
 
     fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
         let start = self.current_span();
+        if self.check(&TokenKind::Await) {
+            self.advance();
+            let expr = self.parse_expr()?;
+            return Ok(Stmt::Await { expr, span: start.merge(self.current_span()) });
+        }
+        if self.looks_like_call_stmt() {
+            let callee = self.parse_expr()?;
+            return Ok(Stmt::Call { callee, span: start.merge(self.current_span()) });
+        }
         if self.check(&TokenKind::If) {
             self.advance();
             let cond = self.parse_expr()?;
@@ -668,7 +905,7 @@ impl Parser {
         while !self.check(&TokenKind::Eof) {
             if self.check(&TokenKind::Screen)
                 || self.check(&TokenKind::Component)
-                || self.check(&TokenKind::State)
+                || self.check(&TokenKind::At)
                 || self.check(&TokenKind::RBrace)
             {
                 return;
@@ -683,6 +920,24 @@ impl Parser {
         } else {
             false
         }
+    }
+
+    fn looks_like_call_stmt(&self) -> bool {
+        if !matches!(self.current().kind, TokenKind::Ident(_)) {
+            return false;
+        }
+        let mut i = self.pos;
+        while i < self.tokens.len() {
+            match &self.tokens[i].kind {
+                TokenKind::Dot => { i += 1; continue; }
+                TokenKind::Ident(_) => { i += 1; continue; }
+                TokenKind::LParen => return true,
+                TokenKind::PlusPlus | TokenKind::MinusMinus
+                | TokenKind::Eq | TokenKind::PlusEq | TokenKind::MinusEq => return false,
+                _ => return false,
+            }
+        }
+        false
     }
 
     fn error(&self, msg: &str) -> ParseError {

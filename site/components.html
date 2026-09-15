@@ -70,6 +70,40 @@
       <tr><td><code>List</code></td><td>UICollectionView</td><td>RecyclerView</td><td>Keyed virtualized list. Always use <code>key:</code></td></tr>
     </table>
 
+    <h2>Flash-exclusive widgets</h2>
+    <p>38 widgets that only exist in Flash — each solves a real mobile problem that normally takes a package or 50+ lines of boilerplate in Flutter/RN. Full guide: <a href="../docs/flash-widgets.md">Flash-exclusive widgets</a>.</p>
+    <table>
+      <tr><th>Widget</th><th>Solves</th><th>Flutter/RN equivalent</th></tr>
+      <tr><td><code>AsyncView</code></td><td>Loading/empty/error/data UI for @provider async state</td><td>FutureBuilder + manual branches</td></tr>
+      <tr><td><code>PinField</code></td><td>OTP / PIN input with auto-advance</td><td>Custom TextField logic</td></tr>
+      <tr><td><code>SwipeActionRow</code></td><td>Swipe to delete/archive list rows</td><td>Dismissible / swipe-list-view</td></tr>
+      <tr><td><code>EmptyState</code></td><td>Standard empty list/search UI</td><td>Copy-paste every screen</td></tr>
+      <tr><td><code>BottomCTA</code></td><td>Fixed checkout/continue bar above keyboard</td><td>Scaffold + keyboard hacks</td></tr>
+      <tr><td><code>SkeletonList</code></td><td>Shimmer placeholders while loading</td><td>shimmer package</td></tr>
+      <tr><td><code>SecureScreen</code></td><td>Block screenshots on sensitive screens</td><td>Platform channel plugin</td></tr>
+      <tr><td><code>HapticButton</code></td><td>Button with built-in haptic feedback</td><td>Manual HapticFeedback calls</td></tr>
+      <tr><td><code>OfflineBanner</code></td><td>Auto network status banner</td><td>connectivity_plus package</td></tr>
+      <tr><td><code>QuantityStepper</code></td><td>Cart +/- with min/max bounds</td><td>Custom Row + buttons</td></tr>
+    </table>
+
+    <h2>Custom UI with <code>component</code></h2>
+    <p>Compose any built-in or Flash-exclusive widget into reusable custom UI. The compiler inlines components at compile time — zero runtime overhead.</p>
+    <pre><code><span class="kw">component</span> <span class="fn">FlightCard</span>(airline: <span class="type">String</span>, fare: <span class="type">Float</span>) {
+    <span class="fn">Row</span> {
+        <span class="fn">Text</span>(airline).<span class="fn">font</span>(weight: .semibold)
+        <span class="fn">PriceTag</span>(price: fare)
+    }
+    .<span class="fn">padding</span>(<span class="num">16</span>)
+    .<span class="fn">background</span>(.<span class="type">surface</span>)
+    .<span class="fn">border_radius</span>(<span class="num">12</span>)
+}
+
+<span class="kw">screen</span> Home {
+    <span class="fn">List</span>(flights) key: f.id { f <span class="kw">in</span>
+        <span class="fn">FlightCard</span>(airline: f.airline, fare: f.fare)
+    }
+}</code></pre>
+
     <h2>Examples</h2>
     <h3>Text with modifiers</h3>
     <pre><code><span class="fn">Text</span>(<span class="str">"Hello, Flash"</span>)

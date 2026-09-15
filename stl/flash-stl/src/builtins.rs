@@ -1,69 +1,35 @@
-//! Built-in UI primitives and STL algorithms available in every `.ui` file.
+//! Built-in UI primitives — delegates to the widget catalog in `widgets.rs`.
 
-use flash_span::Symbol;
-use crate::types::{ParamSig, TypeKind};
+use crate::types::ParamSig;
+use crate::widgets::{
+    block_is_handler, is_container, widget_by_id, widget_by_name, widget_signatures, PrimaryProp,
+    WidgetId, WidgetSig,
+};
 
-/// Kind of built-in UI node.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum BuiltinNode {
-    Text,
-    Button,
-    Column,
-    Row,
-    Stack,
-    Image,
-    TextField,
-    ScrollView,
-    List,
-    Loading,
-}
+/// Kind of built-in UI node (stable ID from widget catalog).
+pub type BuiltinNode = WidgetId;
 
 impl BuiltinNode {
     pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "Text" => Some(BuiltinNode::Text),
-            "Button" => Some(BuiltinNode::Button),
-            "Column" => Some(BuiltinNode::Column),
-            "Row" => Some(BuiltinNode::Row),
-            "Stack" => Some(BuiltinNode::Stack),
-            "Image" => Some(BuiltinNode::Image),
-            "TextField" => Some(BuiltinNode::TextField),
-            "ScrollView" => Some(BuiltinNode::ScrollView),
-            "List" => Some(BuiltinNode::List),
-            "Loading" => Some(BuiltinNode::Loading),
-            _ => None,
-        }
+        widget_by_name(name).map(|w| w.id)
     }
 
     pub fn name(&self) -> &'static str {
-        match self {
-            BuiltinNode::Text => "Text",
-            BuiltinNode::Button => "Button",
-            BuiltinNode::Column => "Column",
-            BuiltinNode::Row => "Row",
-            BuiltinNode::Stack => "Stack",
-            BuiltinNode::Image => "Image",
-            BuiltinNode::TextField => "TextField",
-            BuiltinNode::ScrollView => "ScrollView",
-            BuiltinNode::List => "List",
-            BuiltinNode::Loading => "Loading",
-        }
+        widget_by_id(*self).map(|w| w.name).unwrap_or("Unknown")
     }
 
-    /// Whether the trailing block is an event handler (leaf) vs children (container).
     pub fn block_is_handler(&self) -> bool {
-        matches!(self, BuiltinNode::Button | BuiltinNode::TextField)
+        block_is_handler(self.name())
     }
 
     pub fn is_container(&self) -> bool {
-        matches!(
-            self,
-            BuiltinNode::Column
-                | BuiltinNode::Row
-                | BuiltinNode::Stack
-                | BuiltinNode::ScrollView
-                | BuiltinNode::List
-        )
+        is_container(self.name())
+    }
+
+    pub fn primary_prop(&self) -> PrimaryProp {
+        widget_by_id(*self)
+            .map(|w| w.primary_prop)
+            .unwrap_or(PrimaryProp::None)
     }
 }
 
@@ -74,6 +40,7 @@ pub struct BuiltinSig {
     pub params: Vec<ParamSig>,
     pub accepts_children: bool,
     pub accepts_handler: bool,
+    pub primary_prop: PrimaryProp,
 }
 
 /// Built-in modifier (styling).
@@ -102,16 +69,11 @@ impl BuiltinModifier {
 }
 
 /// STL-style algorithms exposed to `.ui` handlers via Tier-1 imports.
-/// Listed here for documentation; actual implementations live in Rust.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StlAlgorithm {
-    /// `len(collection)` — like `std::size`
     Len,
-    /// `is_empty(collection)`
     IsEmpty,
-    /// `contains(collection, item)`
     Contains,
-    /// `clamp(value, min, max)`
     Clamp,
 }
 
@@ -129,87 +91,14 @@ impl StlAlgorithm {
 
 /// Get signatures for all built-in UI nodes.
 pub fn builtin_signatures() -> Vec<BuiltinSig> {
-    use TypeKind::*;
-    vec![
-        BuiltinSig {
-            node: BuiltinNode::Text,
-            params: vec![ParamSig {
-                name: Symbol(0), // positional
-                ty: String,
-                optional: false,
-            }],
-            accepts_children: false,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::Button,
-            params: vec![ParamSig {
-                name: Symbol(0),
-                ty: String,
-                optional: false,
-            }],
-            accepts_children: false,
-            accepts_handler: true,
-        },
-        BuiltinSig {
-            node: BuiltinNode::Column,
-            params: vec![],
-            accepts_children: true,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::Row,
-            params: vec![],
-            accepts_children: true,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::Stack,
-            params: vec![],
-            accepts_children: true,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::Image,
-            params: vec![ParamSig {
-                name: Symbol(0),
-                ty: String,
-                optional: false,
-            }],
-            accepts_children: false,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::TextField,
-            params: vec![ParamSig {
-                name: Symbol(0),
-                ty: String,
-                optional: true,
-            }],
-            accepts_children: false,
-            accepts_handler: true,
-        },
-        BuiltinSig {
-            node: BuiltinNode::ScrollView,
-            params: vec![],
-            accepts_children: true,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::List,
-            params: vec![ParamSig {
-                name: Symbol(0),
-                ty: Error, // generic — checked at call site
-                optional: false,
-            }],
-            accepts_children: true,
-            accepts_handler: false,
-        },
-        BuiltinSig {
-            node: BuiltinNode::Loading,
-            params: vec![],
-            accepts_children: false,
-            accepts_handler: false,
-        },
-    ]
+    widget_signatures()
+        .into_iter()
+        .map(|sig: WidgetSig| BuiltinSig {
+            node: sig.id,
+            params: sig.params,
+            accepts_children: sig.accepts_children,
+            accepts_handler: sig.accepts_handler,
+            primary_prop: sig.primary_prop,
+        })
+        .collect()
 }

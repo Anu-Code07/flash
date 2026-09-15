@@ -1,16 +1,23 @@
 //! Semantic analysis: type checking, effect analysis, and IR lowering.
 
+mod provider;
+
 use flash_ast::{
     Arg, Ast, AssignOp as AstAssignOp, AstNode, ComponentDef, Expr, ExprId as AstExprId,
-    HandlerId as AstHandlerId, IncDecOp, InterpPart, Item, LValue, ScreenDef, StateDef, Stmt,
-    TypeRef,
+    HandlerId as AstHandlerId, IncDecOp, InterpPart, Item, ScreenDef, Stmt, TypeRef,
 };
 use flash_ir::{
-    AssignOp, ComponentIr, DepTable, HandlerBody, HandlerId, HandlerIr, IrExpr, NodeId, NodeIr,
-    NodeKind, ParamDef, PropKey, ScreenIr, SlotDef, SlotId, StaticProp, UiIr, UpdateOp,
+    AssignOp, ComponentIr, DepTable, HandlerBody, HandlerId, HandlerIr, IrExpr, ListenIr,
+    NodeId, NodeIr, NodeKind, ParamDef, PropKey, ScreenIr, SlotId, StaticProp, UiIr, UpdateOp,
 };
 use flash_span::{Interner, Span, Symbol};
-use flash_stl::{StlRegistry, TypeKind};
+use flash_stl::{PrimaryProp, StlRegistry, TypeKind};
+use flash_stl::widgets::widget_by_id;
+
+use provider::{
+    HandlerEnv, ProviderIndex, SlotKey, collect_expr_reads, compile_provider_actions,
+    lower_provider_item, lower_screen_body_items, register_provider_slots, resolve_action_call,
+};
 
 pub struct Compiler {
     stl: StlRegistry,
@@ -37,14 +44,22 @@ impl Compiler {
         &self.diagnostics
     }
 
-    pub fn compile(&mut self, ast: &Ast, interner: &Interner) -> Option<UiIr> {
+    pub fn compile(&mut self, ast: &Ast, interner: &mut Interner) -> Option<UiIr> {
+        let provider_index = ProviderIndex::from_ast(ast);
         let mut screens = Vec::new();
         let mut components = Vec::new();
+        let mut provider_irs = Vec::new();
+
+        for item in &ast.items {
+            if let Item::Provider(p) = item {
+                provider_irs.push(lower_provider_item(p));
+            }
+        }
 
         for item in &ast.items {
             match item {
                 Item::Screen(screen) => {
-                    if let Some(ir) = self.lower_screen(ast, screen, interner) {
+                    if let Some(ir) = self.lower_screen(ast, screen, &provider_index, interner) {
                         screens.push(ir);
                     }
                 }
@@ -53,7 +68,7 @@ impl Compiler {
                         components.push(ir);
                     }
                 }
-                Item::Import(_) => {}
+                Item::Import(_) | Item::Provider(_) => {}
             }
         }
 
@@ -63,27 +78,102 @@ impl Compiler {
             return None;
         }
 
-        Some(UiIr { screens, components })
+        Some(UiIr {
+            screens,
+            components,
+            providers: provider_irs,
+        })
     }
 
-    fn lower_screen(&mut self, ast: &Ast, screen: &ScreenDef, interner: &Interner) -> Option<ScreenIr> {
-        let mut ctx = LowerCtx::new(interner);
+    fn lower_screen(
+        &mut self,
+        ast: &Ast,
+        screen: &ScreenDef,
+        provider_index: &ProviderIndex,
+        interner: &mut Interner,
+    ) -> Option<ScreenIr> {
+        let mut slots = Vec::new();
+        let mut slot_map = std::collections::HashMap::new();
+        let mut compiled_actions = Vec::new();
+
+        for inject in &screen.injects {
+            if let Some(provider) = provider_index.providers.get(&inject.ty.name) {
+                register_provider_slots(
+                    self,
+                    ast,
+                    &mut slots,
+                    &mut slot_map,
+                    inject,
+                    provider,
+                    interner,
+                );
+            } else {
+                self.diagnostics.push(Diagnostic {
+                    code: "UI2001".into(),
+                    message: format!(
+                        "unknown provider type `{}`",
+                        interner.get(inject.ty.name)
+                    ),
+                    span: inject.span,
+                    suggestion: Some("define @provider before the screen".into()),
+                });
+            }
+        }
 
         for state in &screen.state {
             let ty = self.resolve_type(&state.ty, interner);
-            let init = self.lower_expr(ast, &ctx, state.init);
-            let slot = SlotId(ctx.slots.len() as u32);
-            ctx.slots.push(SlotDef {
+            let init = self.lower_expr_readonly(ast, &slots, &slot_map, state.init, interner);
+            let key = SlotKey {
+                prefix: None,
+                field: state.name,
+            };
+            let slot = SlotId(slots.len() as u32);
+            slots.push(flash_ir::SlotDef {
                 name: state.name,
                 ty,
                 init,
             });
-            ctx.slot_map.insert(state.name, slot);
+            slot_map.insert(key, slot);
         }
 
+        let mut ctx = LowerCtx::new(interner, slots, slot_map);
+
+        for inject in &screen.injects {
+            if let Some(provider) = provider_index.providers.get(&inject.ty.name) {
+                compiled_actions.extend(compile_provider_actions(
+                    self,
+                    ast,
+                    &ctx,
+                    inject.name,
+                    provider,
+                    interner,
+                ));
+            }
+        }
+
+        let handler_env = HandlerEnv {
+            actions: compiled_actions.clone(),
+            injects: screen.injects.clone(),
+        };
+
         let mut node_builder = NodeBuilder::new();
-        for &node_id in &screen.body {
-            self.lower_node(ast, &mut ctx, &mut node_builder, node_id, None, interner);
+        lower_screen_body_items(
+            self,
+            ast,
+            &mut ctx,
+            &mut node_builder,
+            &screen.body,
+            &handler_env,
+            interner,
+        );
+
+        let mut listens = Vec::new();
+        for listen in &screen.listens {
+            let reads = collect_expr_reads(ast, &ctx, listen.expr);
+            listens.push(ListenIr {
+                reads,
+                handler: HandlerId(listens.len() as u32),
+            });
         }
 
         let deps = DepTable::build(ctx.slots.len(), &node_builder.update_ops);
@@ -96,25 +186,49 @@ impl Compiler {
             update_ops: node_builder.update_ops,
             deps,
             handlers: node_builder.handlers,
-            exprs: Vec::new(),
+            actions: compiled_actions,
+            listens,
+            exprs: node_builder.exprs,
         })
     }
 
-    fn lower_component(&mut self, ast: &Ast, comp: &ComponentDef, interner: &Interner) -> Option<ComponentIr> {
-        let mut ctx = LowerCtx::new(interner);
+    fn lower_component(
+        &mut self,
+        ast: &Ast,
+        comp: &ComponentDef,
+        interner: &Interner,
+    ) -> Option<ComponentIr> {
+        let mut ctx = LowerCtx::new(interner, Vec::new(), std::collections::HashMap::new());
         for param in &comp.params {
-            ctx.params.insert(param.name, self.resolve_type(&param.ty, interner));
+            ctx.params
+                .insert(param.name, self.resolve_type(&param.ty, interner));
         }
+        let handler_env = HandlerEnv {
+            actions: Vec::new(),
+            injects: Vec::new(),
+        };
         let mut node_builder = NodeBuilder::new();
         for &node_id in &comp.body {
-            self.lower_node(ast, &mut ctx, &mut node_builder, node_id, None, interner);
+            self.lower_node(
+                ast,
+                &mut ctx,
+                &mut node_builder,
+                node_id,
+                None,
+                &handler_env,
+                interner,
+            );
         }
         Some(ComponentIr {
             name: comp.name,
-            params: comp.params.iter().map(|p| ParamDef {
-                name: p.name,
-                ty: self.resolve_type(&p.ty, interner),
-            }).collect(),
+            params: comp
+                .params
+                .iter()
+                .map(|p| ParamDef {
+                    name: p.name,
+                    ty: self.resolve_type(&p.ty, interner),
+                })
+                .collect(),
             nodes: node_builder.nodes,
             static_props: node_builder.static_props,
             update_ops: node_builder.update_ops,
@@ -123,20 +237,27 @@ impl Compiler {
         })
     }
 
-    fn lower_node(
+    pub(crate) fn lower_node(
         &mut self,
         ast: &Ast,
         ctx: &mut LowerCtx<'_>,
         builder: &mut NodeBuilder,
         node_id: flash_ast::NodeId,
         parent: Option<NodeId>,
+        handler_env: &HandlerEnv,
         interner: &Interner,
     ) {
         let node = &ast.nodes[node_id.0 as usize];
         match node {
-            AstNode::Element { kind, args, children, handler, .. } => {
+            AstNode::Element {
+                kind,
+                args,
+                children,
+                handler,
+                ..
+            } => {
                 let kind_name = ctx.interner.get(*kind);
-                let ir_kind = NodeKind::from_name(kind_name).unwrap_or(NodeKind::Text);
+                let ir_kind = NodeKind::from_name(kind_name).unwrap_or(NodeKind::TEXT);
                 let ir_node_id = builder.add_node(ir_kind, parent);
 
                 for arg in args {
@@ -144,21 +265,37 @@ impl Compiler {
                 }
 
                 if let Some(handler_id) = handler {
-                    self.lower_handler(ast, ctx, builder, ir_node_id, *handler_id, interner);
+                    self.lower_handler(
+                        ast,
+                        ctx,
+                        builder,
+                        ir_node_id,
+                        *handler_id,
+                        handler_env,
+                        interner,
+                    );
                 }
 
                 for &child_id in children {
-                    self.lower_node(ast, ctx, builder, child_id, Some(ir_node_id), interner);
+                    self.lower_node(
+                        ast,
+                        ctx,
+                        builder,
+                        child_id,
+                        Some(ir_node_id),
+                        handler_env,
+                        interner,
+                    );
                 }
             }
             AstNode::If { then_, .. } => {
                 for &child_id in then_ {
-                    self.lower_node(ast, ctx, builder, child_id, parent, interner);
+                    self.lower_node(ast, ctx, builder, child_id, parent, handler_env, interner);
                 }
             }
             AstNode::List { body, .. } => {
                 for &child_id in body {
-                    self.lower_node(ast, ctx, builder, child_id, parent, interner);
+                    self.lower_node(ast, ctx, builder, child_id, parent, handler_env, interner);
                 }
             }
             AstNode::Error => {}
@@ -174,39 +311,38 @@ impl Compiler {
         kind: &NodeKind,
         arg: &Arg,
     ) {
+        let prop_key = widget_by_id(kind.id())
+            .map(|w| match w.primary_prop {
+                PrimaryProp::Text => Some(PropKey::Text),
+                PrimaryProp::Title => Some(PropKey::Title),
+                PrimaryProp::Src => Some(PropKey::Src),
+                PrimaryProp::Value => Some(PropKey::Value),
+                PrimaryProp::None => None,
+            })
+            .flatten();
+        let Some(prop_key) = prop_key else {
+            return;
+        };
+
         let expr = &ast.exprs[arg.value.0 as usize];
-        match (kind, expr) {
-            (NodeKind::Text, Expr::Interp(parts)) => {
-                let (_ir_expr, reads) = self.lower_interp(ast, ctx, parts);
+        match expr {
+            Expr::Interp(parts) => {
+                let (ir_expr, reads) = self.lower_interp(ast, ctx, parts);
+                let expr_id = flash_ir::ExprId(builder.exprs.len() as u32);
+                builder.exprs.push(ir_expr);
                 builder.update_ops.push(UpdateOp {
                     node: node_id,
-                    key: PropKey::Text,
-                    expr: flash_ir::ExprId(builder.update_ops.len() as u32),
+                    key: prop_key,
+                    expr: expr_id,
                     reads,
                 });
             }
-            (NodeKind::Text, Expr::Str(sym)) => {
+            Expr::Str(sym) => {
                 builder.static_props.push(StaticProp {
                     node: node_id,
-                    key: PropKey::Text,
+                    key: prop_key,
                     value: IrExpr::Str(ctx.interner.get(*sym).to_string()),
                 });
-            }
-            (NodeKind::Button, Expr::Str(sym)) => {
-                builder.static_props.push(StaticProp {
-                    node: node_id,
-                    key: PropKey::Title,
-                    value: IrExpr::Str(ctx.interner.get(*sym).to_string()),
-                });
-            }
-            (NodeKind::Button, Expr::Interp(parts)) if parts.len() == 1 => {
-                if let InterpPart::Text(sym) = &parts[0] {
-                    builder.static_props.push(StaticProp {
-                        node: node_id,
-                        key: PropKey::Title,
-                        value: IrExpr::Str(ctx.interner.get(*sym).to_string()),
-                    });
-                }
             }
             _ => {}
         }
@@ -219,6 +355,7 @@ impl Compiler {
         builder: &mut NodeBuilder,
         node_id: NodeId,
         handler_id: AstHandlerId,
+        handler_env: &HandlerEnv,
         interner: &Interner,
     ) {
         let handler = &ast.handlers[handler_id.0 as usize];
@@ -226,8 +363,30 @@ impl Compiler {
 
         for stmt in &handler.stmts {
             match stmt {
-                Stmt::IncDec { target, op: IncDecOp::Inc, .. } => {
-                    if let Some(slot) = ctx.resolve_lvalue(&target.path) {
+                Stmt::Call { callee, .. } => {
+                    if let Some(action_idx) = resolve_action_call(
+                        ast,
+                        *callee,
+                        &handler_env.actions,
+                        &handler_env.injects,
+                        interner,
+                    ) {
+                        let writes = handler_env.actions[action_idx as usize].writes.clone();
+                        builder.handlers.push(HandlerIr {
+                            id: h_id,
+                            node: node_id,
+                            writes,
+                            body: HandlerBody::InvokeAction(action_idx),
+                        });
+                        builder.nodes[node_id.0 as usize].handler = Some(h_id);
+                    }
+                }
+                Stmt::IncDec {
+                    target,
+                    op: IncDecOp::Inc,
+                    ..
+                } => {
+                    if let Some(slot) = ctx.resolve_path(&target.path) {
                         builder.handlers.push(HandlerIr {
                             id: h_id,
                             node: node_id,
@@ -239,15 +398,40 @@ impl Compiler {
                         self.error_ui1003(&target.path[0], target.span, interner);
                     }
                 }
-                Stmt::Assign { target, op: AstAssignOp::Set, value, .. } => {
-                    if let Some(slot) = ctx.resolve_lvalue(&target.path) {
+                Stmt::IncDec {
+                    target,
+                    op: IncDecOp::Dec,
+                    ..
+                } => {
+                    if let Some(slot) = ctx.resolve_path(&target.path) {
+                        builder.handlers.push(HandlerIr {
+                            id: h_id,
+                            node: node_id,
+                            writes: vec![slot],
+                            body: HandlerBody::Decrement(slot),
+                        });
+                        builder.nodes[node_id.0 as usize].handler = Some(h_id);
+                    }
+                }
+                Stmt::Assign {
+                    target,
+                    op: AstAssignOp::Set,
+                    value,
+                    ..
+                } => {
+                    if let Some(slot) = ctx.resolve_path(&target.path) {
                         let ir_val = self.lower_expr(ast, ctx, *value);
                         builder.handlers.push(HandlerIr {
                             id: h_id,
                             node: node_id,
                             writes: vec![slot],
-                            body: HandlerBody::Assign { slot, op: AssignOp::Set, value: ir_val },
+                            body: HandlerBody::Assign {
+                                slot,
+                                op: AssignOp::Set,
+                                value: ir_val,
+                            },
                         });
+                        builder.nodes[node_id.0 as usize].handler = Some(h_id);
                     }
                 }
                 _ => {}
@@ -270,7 +454,7 @@ impl Compiler {
                     exprs.push(IrExpr::Str(ctx.interner.get(*sym).to_string()));
                 }
                 InterpPart::Expr(expr_id) => {
-                    let reads_here = self.collect_reads(ast, ctx, *expr_id);
+                    let reads_here = collect_expr_reads(ast, ctx, *expr_id);
                     reads.extend(&reads_here);
                     for slot in reads_here {
                         exprs.push(IrExpr::Slot(slot));
@@ -279,47 +463,55 @@ impl Compiler {
             }
         }
 
+        reads.sort_by_key(|s: &SlotId| s.0);
+        reads.dedup();
         (IrExpr::Concat(exprs), reads)
     }
 
-    fn collect_reads(&mut self, ast: &Ast, ctx: &LowerCtx<'_>, expr_id: AstExprId) -> Vec<SlotId> {
-        let expr = &ast.exprs[expr_id.0 as usize];
-        match expr {
-            Expr::Ident(sym) => {
-                if let Some(s) = ctx.slot_map.get(sym) {
-                    vec![*s]
-                } else {
-                    self.error_ui1003(sym, Span::default(), ctx.interner);
-                    Vec::new()
-                }
-            }
-            _ => Vec::new(),
-        }
-    }
-
-    fn lower_expr(&self, ast: &Ast, ctx: &LowerCtx<'_>, expr_id: AstExprId) -> IrExpr {
+    pub(crate) fn lower_expr(&self, ast: &Ast, ctx: &LowerCtx<'_>, expr_id: AstExprId) -> IrExpr {
         let expr = &ast.exprs[expr_id.0 as usize];
         match expr {
             Expr::Int(v) => IrExpr::Int(*v),
             Expr::Float(v) => IrExpr::Float(*v),
             Expr::Bool(v) => IrExpr::Bool(*v),
             Expr::Str(sym) => IrExpr::Str(ctx.interner.get(*sym).to_string()),
-            Expr::Ident(sym) => ctx.slot_map.get(sym)
-                .map(|s| IrExpr::Slot(*s))
+            Expr::Ident(sym) => ctx
+                .resolve_path(&[*sym])
+                .map(IrExpr::Slot)
                 .unwrap_or(IrExpr::Error),
+            Expr::Field { base, field, .. } => {
+                if let Expr::Ident(prefix) = &ast.exprs[base.0 as usize] {
+                    ctx.resolve_path(&[*prefix, *field])
+                        .map(IrExpr::Slot)
+                        .unwrap_or(IrExpr::Error)
+                } else {
+                    IrExpr::Error
+                }
+            }
             _ => IrExpr::Error,
         }
     }
 
-    fn resolve_type(&self, ty: &TypeRef, interner: &Interner) -> TypeKind {
+    pub(crate) fn resolve_type(&self, ty: &TypeRef, interner: &Interner) -> TypeKind {
         let name = interner.get(ty.name);
-        let generics = ty.generics.iter().map(|g| self.resolve_type(g, interner)).collect::<Vec<_>>();
-        self.stl.resolve_type(name, &generics)
-            .map(|t| if ty.optional { TypeKind::Option(Box::new(t)) } else { t })
+        let generics = ty
+            .generics
+            .iter()
+            .map(|g| self.resolve_type(g, interner))
+            .collect::<Vec<_>>();
+        self.stl
+            .resolve_type(name, &generics)
+            .map(|t| {
+                if ty.optional {
+                    TypeKind::Option(Box::new(t))
+                } else {
+                    t
+                }
+            })
             .unwrap_or(TypeKind::Error)
     }
 
-    fn error_ui1003(&mut self, sym: &Symbol, span: Span, interner: &Interner) {
+    pub(crate) fn error_ui1003(&mut self, sym: &Symbol, span: Span, interner: &Interner) {
         self.diagnostics.push(Diagnostic {
             code: "UI1003".into(),
             message: format!("unknown variable `{}`", interner.get(*sym)),
@@ -330,24 +522,24 @@ impl Compiler {
 }
 
 struct LowerCtx<'a> {
-    slots: Vec<SlotDef>,
-    slot_map: std::collections::HashMap<Symbol, SlotId>,
+    slots: Vec<flash_ir::SlotDef>,
+    slot_map: std::collections::HashMap<SlotKey, SlotId>,
     params: std::collections::HashMap<Symbol, TypeKind>,
     interner: &'a Interner,
 }
 
 impl<'a> LowerCtx<'a> {
-    fn new(interner: &'a Interner) -> Self {
+    fn new(
+        interner: &'a Interner,
+        slots: Vec<flash_ir::SlotDef>,
+        slot_map: std::collections::HashMap<SlotKey, SlotId>,
+    ) -> Self {
         Self {
-            slots: Vec::new(),
-            slot_map: std::collections::HashMap::new(),
+            slots,
+            slot_map,
             params: std::collections::HashMap::new(),
             interner,
         }
-    }
-
-    fn resolve_lvalue(&self, path: &[Symbol]) -> Option<SlotId> {
-        path.first().and_then(|s| self.slot_map.get(s).copied())
     }
 }
 
@@ -356,6 +548,7 @@ struct NodeBuilder {
     static_props: Vec<StaticProp>,
     update_ops: Vec<UpdateOp>,
     handlers: Vec<HandlerIr>,
+    exprs: Vec<IrExpr>,
 }
 
 impl NodeBuilder {
@@ -365,6 +558,7 @@ impl NodeBuilder {
             static_props: Vec::new(),
             update_ops: Vec::new(),
             handlers: Vec::new(),
+            exprs: Vec::new(),
         }
     }
 

@@ -1,7 +1,8 @@
 //! STL type registry — the compiler's view of all standard types.
 
 use flash_span::{Interner, Symbol};
-use crate::builtins::{builtin_signatures, BuiltinNode, BuiltinSig};
+use crate::builtins::{builtin_signatures, BuiltinSig};
+use crate::widgets::widget_by_name;
 use crate::types::{TypeId, TypeKind};
 
 /// Central registry of all STL types and built-ins.
@@ -62,13 +63,13 @@ impl StlRegistry {
     }
 
     pub fn lookup_builtin(&self, name: &str) -> Option<&BuiltinSig> {
-        BuiltinNode::from_name(name).and_then(|n| {
-            self.builtins.iter().find(|b| b.node == n)
+        widget_by_name(name).and_then(|w| {
+            self.builtins.iter().find(|b| b.node == w.id)
         })
     }
 
     pub fn is_builtin(&self, name: &str) -> bool {
-        BuiltinNode::from_name(name).is_some()
+        widget_by_name(name).is_some()
     }
 
     pub fn primitive_types(&self) -> &[(Symbol, TypeKind)] {

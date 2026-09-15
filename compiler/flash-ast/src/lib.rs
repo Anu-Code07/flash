@@ -58,16 +58,91 @@ pub enum Item {
     Screen(ScreenDef),
     Component(ComponentDef),
     Import(ImportDef),
+    Provider(ProviderDef),
+}
+
+/// Provider scope — mirrors Riverpod ProviderScope / autoDispose / family.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProviderScope {
+    Screen,
+    App,
+    Family,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProviderDef {
+    pub name: Symbol,
+    pub scope: ProviderScope,
+    pub family_key: Option<Symbol>,
+    pub params: Vec<Param>,
+    pub states: Vec<StateDef>,
+    pub actions: Vec<ActionDef>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct ActionDef {
+    pub name: Symbol,
+    pub params: Vec<Param>,
+    pub is_async: bool,
+    pub handler: HandlerId,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct InjectDef {
+    pub name: Symbol,
+    pub ty: TypeRef,
+    pub family_args: Vec<ExprId>,
+    pub span: Span,
+}
+
+/// Side-effect listener — like Riverpod `ref.listen`.
+#[derive(Clone, Debug)]
+pub struct ListenDef {
+    pub expr: ExprId,
+    pub binding: Symbol,
+    pub handler: HandlerId,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
 pub struct ScreenDef {
     pub name: Symbol,
     pub params: Vec<Param>,
+    pub injects: Vec<InjectDef>,
+    pub listens: Vec<ListenDef>,
     pub state: Vec<StateDef>,
     pub lifecycle: Vec<LifecycleDef>,
+    pub body: Vec<ScreenBodyItem>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum ScreenBodyItem {
+    Node(NodeId),
+    Match(MatchDef),
+}
+
+#[derive(Clone, Debug)]
+pub struct MatchDef {
+    pub expr: ExprId,
+    pub arms: Vec<MatchArm>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct MatchArm {
+    pub pattern: MatchPattern,
     pub body: Vec<NodeId>,
     pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub enum MatchPattern {
+    Ident(Symbol),
+    Call { name: Symbol, binding: Option<Symbol> },
+    Wildcard,
 }
 
 #[derive(Clone, Debug)]
@@ -134,11 +209,18 @@ pub enum Stmt {
         op: IncDecOp,
         span: Span,
     },
-    Call(ExprId, Span),
+    Call {
+        callee: ExprId,
+        span: Span,
+    },
     If {
         cond: ExprId,
         then_: Vec<Stmt>,
         else_: Option<Vec<Stmt>>,
+        span: Span,
+    },
+    Await {
+        expr: ExprId,
         span: Span,
     },
 }

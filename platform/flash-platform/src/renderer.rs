@@ -67,7 +67,7 @@ impl CommandBuffer {
                 CommandOp::Create { kind, handle } => {
                     buf.push(0);
                     buf.extend_from_slice(&handle.to_le_bytes());
-                    buf.extend_from_slice(&(*kind as u16).to_le_bytes());
+                    buf.extend_from_slice(&kind.as_u16().to_le_bytes());
                 }
                 CommandOp::SetProp { handle, key, value } => {
                     buf.push(1);

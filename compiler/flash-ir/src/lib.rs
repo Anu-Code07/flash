@@ -5,6 +5,7 @@ pub mod layout;
 
 use flash_span::Symbol;
 use flash_stl::types::TypeKind;
+use flash_stl::widgets::{widget_by_id, widget_by_name, WidgetId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NodeId(pub u32);
@@ -29,6 +30,7 @@ pub struct RegionId(pub u32);
 pub struct UiIr {
     pub screens: Vec<ScreenIr>,
     pub components: Vec<ComponentIr>,
+    pub providers: Vec<ProviderIr>,
 }
 
 #[derive(Clone, Debug)]
@@ -40,7 +42,39 @@ pub struct ScreenIr {
     pub update_ops: Vec<UpdateOp>,
     pub deps: DepTable,
     pub handlers: Vec<HandlerIr>,
+    pub actions: Vec<CompiledAction>,
+    pub listens: Vec<ListenIr>,
     pub exprs: Vec<IrExpr>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProviderIr {
+    pub name: Symbol,
+    pub scope: ProviderScope,
+    pub state_fields: Vec<Symbol>,
+    pub actions: Vec<Symbol>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProviderScope {
+    Screen,
+    App,
+    Family,
+}
+
+#[derive(Clone, Debug)]
+pub struct CompiledAction {
+    pub name: Symbol,
+    pub provider: Option<Symbol>,
+    pub writes: Vec<SlotId>,
+    pub body: Vec<HandlerBody>,
+    pub is_async: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct ListenIr {
+    pub reads: Vec<SlotId>,
+    pub handler: HandlerId,
 }
 
 #[derive(Clone, Debug)]
@@ -67,50 +101,36 @@ pub struct ParamDef {
     pub ty: TypeKind,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NodeKind {
-    Text = 0,
-    Button = 1,
-    Column = 2,
-    Row = 3,
-    Stack = 4,
-    Image = 5,
-    TextField = 6,
-    ScrollView = 7,
-    List = 8,
-    Loading = 9,
-}
+/// Widget kind in IR — wraps stable `WidgetId` from the STL catalog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NodeKind(WidgetId);
 
 impl NodeKind {
+    pub const TEXT: Self = Self(WidgetId(0));
+    pub const BUTTON: Self = Self(WidgetId(1));
+    pub const COLUMN: Self = Self(WidgetId(2));
+    pub const ROW: Self = Self(WidgetId(3));
+    pub const STACK: Self = Self(WidgetId(4));
+    pub const IMAGE: Self = Self(WidgetId(5));
+    pub const TEXT_FIELD: Self = Self(WidgetId(6));
+    pub const SCROLL_VIEW: Self = Self(WidgetId(7));
+    pub const LIST: Self = Self(WidgetId(8));
+    pub const LOADING: Self = Self(WidgetId(9));
+
     pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "Text" => Some(NodeKind::Text),
-            "Button" => Some(NodeKind::Button),
-            "Column" => Some(NodeKind::Column),
-            "Row" => Some(NodeKind::Row),
-            "Stack" => Some(NodeKind::Stack),
-            "Image" => Some(NodeKind::Image),
-            "TextField" => Some(NodeKind::TextField),
-            "ScrollView" => Some(NodeKind::ScrollView),
-            "List" => Some(NodeKind::List),
-            "Loading" => Some(NodeKind::Loading),
-            _ => None,
-        }
+        widget_by_name(name).map(|w| NodeKind(w.id))
     }
 
     pub fn name(&self) -> &'static str {
-        match self {
-            NodeKind::Text => "Text",
-            NodeKind::Button => "Button",
-            NodeKind::Column => "Column",
-            NodeKind::Row => "Row",
-            NodeKind::Stack => "Stack",
-            NodeKind::Image => "Image",
-            NodeKind::TextField => "TextField",
-            NodeKind::ScrollView => "ScrollView",
-            NodeKind::List => "List",
-            NodeKind::Loading => "Loading",
-        }
+        widget_by_id(self.0).map(|w| w.name).unwrap_or("Unknown")
+    }
+
+    pub fn id(&self) -> WidgetId {
+        self.0
+    }
+
+    pub fn as_u16(&self) -> u16 {
+        self.0.0
     }
 }
 
@@ -158,6 +178,10 @@ pub enum HandlerBody {
     Increment(SlotId),
     Decrement(SlotId),
     Assign { slot: SlotId, op: AssignOp, value: IrExpr },
+    /// Invoke a compiled @action (Riverpod Notifier method).
+    InvokeAction(u32),
+    /// Multiple ops from an @action body.
+    Sequence(Vec<HandlerBody>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -254,6 +278,28 @@ pub fn format_screen_ir(screen: &ScreenIr, interner: &flash_span::Interner) -> S
     for h in &screen.handlers {
         let writes = h.writes.iter().map(|s| s.0.to_string()).collect::<Vec<_>>().join(",");
         out.push_str(&format!("    h{}  node={} writes=[{}] {:?}\n", h.id.0, h.node.0, writes, h.body));
+    }
+
+    if !screen.actions.is_empty() {
+        out.push_str("\n  ACTIONS\n");
+        for (i, action) in screen.actions.iter().enumerate() {
+            let writes = action.writes.iter().map(|s| s.0.to_string()).collect::<Vec<_>>().join(",");
+            out.push_str(&format!(
+                "    a{}  {} writes=[{}] async={}\n",
+                i,
+                interner.get(action.name),
+                writes,
+                action.is_async
+            ));
+        }
+    }
+
+    if !screen.listens.is_empty() {
+        out.push_str("\n  LISTENERS\n");
+        for (i, listen) in screen.listens.iter().enumerate() {
+            let reads = listen.reads.iter().map(|s| s.0.to_string()).collect::<Vec<_>>().join(",");
+            out.push_str(&format!("    l{}  reads=[{}] handler=h{}\n", i, reads, listen.handler.0));
+        }
     }
 
     out.push_str("\n  DEPENDENCIES\n");

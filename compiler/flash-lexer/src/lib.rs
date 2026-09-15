@@ -26,6 +26,7 @@ pub enum TokenKind {
     OnAppear,
     OnDispose,
     Platform,
+    At,
     LBrace,
     RBrace,
     LParen,
@@ -231,6 +232,7 @@ pub fn tokenize(source: &str, file: FileId, interner: &mut Interner) -> Vec<Toke
             b')' => { *pos += 1; emit(tokens, file, lo, *pos, TokenKind::RParen); }
             b',' => { *pos += 1; emit(tokens, file, lo, *pos, TokenKind::Comma); }
             b'.' => { *pos += 1; emit(tokens, file, lo, *pos, TokenKind::Dot); }
+            b'@' => { *pos += 1; emit(tokens, file, lo, *pos, TokenKind::At); }
             b'"' => {
                 *pos += 1;
                 lex_string(source, bytes, pos, file, tokens, interner);
