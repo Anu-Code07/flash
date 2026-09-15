@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Language Reference — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html" class="active">Language</a></li>
+        <li><a href="stl.html">STL</a></li>
+        <li><a href="components.html">Components</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html">Extensions</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container grid-2">
+    <aside class="sidebar">
+      <h4>Basics</h4>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#screens">Screens</a></li>
+        <li><a href="#state">State</a></li>
+        <li><a href="#components">Components</a></li>
+        <li><a href="#types">Types</a></li>
+      </ul>
+      <h4>Control flow</h4>
+      <ul>
+        <li><a href="#if">if / else</a></li>
+        <li><a href="#match">match</a></li>
+        <li><a href="#list">List</a></li>
+      </ul>
+      <h4>Advanced</h4>
+      <ul>
+        <li><a href="#lifecycle">Lifecycle</a></li>
+        <li><a href="#async">Async &amp; await</a></li>
+        <li><a href="#imports">Imports</a></li>
+        <li><a href="#platform">Platform blocks</a></li>
+        <li><a href="#modifiers">Modifiers</a></li>
+        <li><a href="#animation">Animation</a></li>
+      </ul>
+    </aside>
+
+    <main class="content">
+      <h1>Language Reference</h1>
+      <p>Flash <code>.ui</code> is a purpose-built declarative language for mobile UI. It is strongly typed, compiled ahead of time, and designed for fine-grained reactive updates.</p>
+
+      <h2 id="overview">Overview</h2>
+      <p>Every <code>.ui</code> file contains <code>screen</code>, <code>component</code>, or <code>use</code> declarations. The compiler produces a flat UI IR and a static dependency graph.</p>
+      <pre><code><span class="kw">screen</span> Home { ... }
+<span class="kw">component</span> UserCard(name: <span class="type">String</span>) { ... }
+<span class="kw">use</span> presentation::{FlightsViewModel, FlightsState}</code></pre>
+
+      <h2 id="screens">Screens</h2>
+      <p>A screen is a top-level UI entry point. It can accept injected dependencies (view models) as parameters.</p>
+      <pre><code><span class="kw">screen</span> Profile(vm: ProfileViewModel, userId: <span class="type">String</span>) {
+    <span class="kw">onLoad</span> { vm.load(userId) }
+    <span class="fn">Column</span> { ... }
+}</code></pre>
+
+      <h2 id="state">State</h2>
+      <p>Screen-local state lives on the screen. Components are stateless in v1.</p>
+      <pre><code><span class="kw">state</span> count: <span class="type">Int</span> = <span class="num">0</span>
+<span class="kw">state</span> loading: <span class="type">Bool</span> = <span class="num">true</span>
+<span class="kw">state</span> items: <span class="type">List</span>&lt;<span class="type">Item</span>&gt; = []</code></pre>
+      <p>State mutations in handlers: <code>count++</code>, <code>count += 1</code>, <code>loading = false</code></p>
+
+      <h2 id="components">Components</h2>
+      <pre><code><span class="kw">component</span> UserCard(name: <span class="type">String</span>, age: <span class="type">Int</span>) {
+    <span class="fn">Column</span> {
+        <span class="fn">Text</span>(name).<span class="fn">font</span>(size: <span class="num">18</span>, weight: .bold)
+        <span class="fn">Text</span>(<span class="str">"${age} years old"</span>).<span class="fn">color</span>(.<span class="type">muted</span>)
+    }
+}</code></pre>
+
+      <h2 id="types">Types</h2>
+      <table>
+        <tr><th>Type</th><th>Description</th><th>Example</th></tr>
+        <tr><td><code>Int</code></td><td>64-bit integer</td><td><code>42</code></td></tr>
+        <tr><td><code>Float</code></td><td>64-bit float</td><td><code>3.14</code></td></tr>
+        <tr><td><code>Bool</code></td><td>Boolean</td><td><code>true</code></td></tr>
+        <tr><td><code>String</code></td><td>UTF-8 string</td><td><code>"hello"</code></td></tr>
+        <tr><td><code>List&lt;T&gt;</code></td><td>Ordered collection</td><td><code>List&lt;Flight&gt;</code></td></tr>
+        <tr><td><code>Map&lt;K,V&gt;</code></td><td>Key-value map</td><td><code>Map&lt;String, Int&gt;</code></td></tr>
+        <tr><td><code>T?</code></td><td>Optional</td><td><code>String?</code></td></tr>
+        <tr><td><code>Unit</code></td><td>Void</td><td>handler return</td></tr>
+      </table>
+
+      <h2 id="if">if / else</h2>
+      <pre><code><span class="kw">if</span> loading {
+    <span class="fn">Loading</span>()
+} <span class="kw">else</span> {
+    <span class="fn">Text</span>(<span class="str">"Done"</span>)
+}</code></pre>
+
+      <h2 id="match">match</h2>
+      <p>Exhaustive matching on Rust enums imported via <code>#[ui_export]</code>.</p>
+      <pre><code><span class="kw">match</span> vm.state {
+    Loading         -> <span class="fn">Loading</span>()
+    Empty           -> <span class="fn">Text</span>(<span class="str">"No results"</span>)
+    Error(msg)      -> <span class="fn">Text</span>(msg)
+    Loaded(items)   -> <span class="fn">List</span>(items) <span class="kw">key</span>: item.id { item <span class="kw">in</span>
+        <span class="fn">ItemCard</span>(item)
+    }
+}</code></pre>
+
+      <h2 id="list">List</h2>
+      <p>Always supply <code>key:</code> for efficient keyed reconciliation (maps to UICollectionView / RecyclerView).</p>
+      <pre><code><span class="fn">List</span>(users) <span class="kw">key</span>: user.id { user <span class="kw">in</span>
+    <span class="fn">UserCard</span>(name: user.name, age: user.age)
+}</code></pre>
+
+      <h2 id="lifecycle">Lifecycle</h2>
+      <table>
+        <tr><th>Hook</th><th>When</th></tr>
+        <tr><td><code>onLoad</code></td><td>Screen first created — fetch data here</td></tr>
+        <tr><td><code>onAppear</code></td><td>Screen becomes visible (navigation back)</td></tr>
+        <tr><td><code>onDispose</code></td><td>Screen destroyed — cleanup</td></tr>
+      </table>
+
+      <h2 id="async">Async &amp; await</h2>
+      <pre><code><span class="kw">onLoad</span> {
+    <span class="kw">await</span> vm.load(query)
+}</code></pre>
+
+      <h2 id="imports">Imports</h2>
+      <pre><code><span class="kw">use</span> presentation::{CounterViewModel, FlightsState}
+<span class="kw">use</span> presentation::FlightRow</code></pre>
+
+      <h2 id="platform">Platform escape hatch</h2>
+      <pre><code><span class="kw">platform</span> ios {
+    <span class="fn">HealthKitChart</span>(steps: steps)
+}
+<span class="kw">platform</span> android {
+    <span class="fn">GoogleFitChart</span>(steps: steps)
+}</code></pre>
+
+      <h2 id="modifiers">Modifiers</h2>
+      <p>Chain modifiers for styling. Resolved at compile time into flat style records.</p>
+      <pre><code><span class="fn">Text</span>(<span class="str">"Hello"</span>)
+    .<span class="fn">font</span>(size: <span class="num">20</span>, weight: .bold)
+    .<span class="fn">color</span>(.<span class="type">primary</span>)
+    .<span class="fn">padding</span>(<span class="num">16</span>)
+    .<span class="fn">safe_area</span>()
+    .<span class="fn">background</span>(.<span class="type">surface</span>)</code></pre>
+
+      <h2 id="animation">Animation</h2>
+      <p>Animate compositor-only properties via platform animators. Never animate layout properties.</p>
+      <pre><code><span class="fn">Box</span>()
+    .<span class="fn">opacity</span>(visible ? <span class="num">1.0</span> : <span class="num">0.0</span>)
+    .<span class="fn">with_animation</span>(.ease_in_out(duration: <span class="num">300</span>))</code></pre>
+    </main>
+  </div>
+  <footer><p>Flash Language Reference</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

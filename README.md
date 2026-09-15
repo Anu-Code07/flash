@@ -16,6 +16,24 @@ cargo run -p flash-cli -- ir examples/counter/home.ui
 cargo run -p flash-cli -- run examples/counter/home.ui
 ```
 
+## Language documentation site
+
+Browse the full language reference, STL, examples, and mobile guide:
+
+```bash
+cargo run -p flash-cli -- docs
+# Open http://localhost:3000
+```
+
+Or open `site/index.html` directly. Pages include:
+
+- **Language** — syntax, state, handlers, async, match
+- **STL** — collections, strings, math, mobile APIs, 30+ modifiers, design tokens
+- **Components** — built-in UI primitives with iOS/Android mapping
+- **Examples** — counter, flights, animation, navigation tabs
+- **Extensions** — custom modifiers, view models, platform hooks
+- **Mobile** — safe areas, haptics, platform detection, keyboard avoidance
+
 ## Design docs
 
 - [Developer guide — UI + business logic](docs/developer-guide.md)
@@ -40,5 +58,6 @@ runtime/      State, reactive flush, MockRenderer
 platform/     iOS, Android, Web adapters
 stl/          Standard types (C++ STL-like)
 docs/         Architecture and mitigation plans
-examples/     Counter and future flights example
+examples/     Counter, flights, animation, navigation examples
+site/         Language documentation website (flash docs)
 ```

@@ -1,0 +1,10 @@
+{
+  "modules": [
+    {"name": "collections", "functions": ["len", "is_empty", "first", "last", "contains", "index_of", "filter", "map", "reduce", "sort_by", "reverse", "take", "skip", "chunk", "flat_map", "distinct", "zip"]},
+    {"name": "string", "functions": ["trim", "trim_start", "trim_end", "to_upper", "to_lower", "capitalize", "split", "join", "replace", "replace_all", "starts_with", "ends_with", "contains", "substring", "format", "parse_int", "parse_float", "is_blank", "is_empty", "repeat", "pad_start", "pad_end", "truncate", "ellipsize"]},
+    {"name": "math", "functions": ["abs", "min", "max", "clamp", "lerp", "floor", "ceil", "round", "sqrt", "pow", "sin", "cos", "dp_to_px", "px_to_dp", "sp_to_px"]},
+    {"name": "mobile", "functions": ["safe_area_top", "safe_area_bottom", "safe_area_left", "safe_area_right", "screen_width", "screen_height", "is_ios", "is_android", "is_web", "is_tablet", "is_phone", "is_dark_mode", "is_landscape", "haptic_light", "haptic_medium", "haptic_heavy", "keyboard_height", "status_bar_height", "navigate", "navigate_back", "navigate_replace", "share", "open_url"]},
+    {"name": "modifiers", "items": ["padding", "padding_horizontal", "padding_vertical", "margin", "width", "height", "fill_max_width", "fill_max_height", "aspect_ratio", "font", "font_size", "font_weight", "line_height", "letter_spacing", "text_align", "color", "background", "border", "border_radius", "shadow", "opacity", "flex", "align", "justify", "gap", "safe_area", "status_bar_padding", "keyboard_avoiding", "on_tap", "on_long_press", "on_swipe", "disabled", "with_animation", "animate_opacity", "animate_offset", "animate_scale"]}
+
+  ]
+}

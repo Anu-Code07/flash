@@ -1,0 +1,22 @@
+screen FadeIn {
+    state visible: Bool = false
+
+    onLoad {
+        visible = true
+    }
+
+    Column {
+        Text("Welcome to Flash")
+            .font(size: 28, weight: .bold)
+            .opacity(visible ? 1.0 : 0.0)
+            .with_animation(duration: 400, curve: .ease_out)
+
+        Text("Native mobile UI, compiled.")
+            .color(.muted)
+            .padding(top: 8)
+            .opacity(visible ? 1.0 : 0.0)
+            .with_animation(duration: 600, curve: .ease_out)
+    }
+    .padding(24)
+    .safe_area()
+}

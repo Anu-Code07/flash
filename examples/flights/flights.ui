@@ -1,0 +1,72 @@
+// Flights search — mobile-first async pattern
+// View model: crates/presentation/src/flights_vm.rs (#[ui_export])
+
+use presentation::{FlightsViewModel, FlightsState}
+
+screen Flights(vm: FlightsViewModel, query: String) {
+
+    onLoad { await vm.load(query) }
+
+    match vm.state {
+        Loading -> Column {
+            Loading()
+            Text("Searching flights...")
+                .color(.muted)
+                .padding(top: 16)
+        }
+
+        Empty -> Column {
+            Text("No flights found")
+                .font(size: 20, weight: .semibold)
+            Text("Try a different date or destination.")
+                .color(.muted)
+            Button("Try again") { await vm.load(query) }
+                .padding(top: 16)
+        }
+
+        Error(msg) -> Column {
+            Text("Something went wrong")
+                .color(.error)
+            Text(msg).color(.muted)
+            Button("Retry") { await vm.load(query) }
+        }
+
+        Loaded(rows) -> List(rows) key: row.id { row in
+            FlightCard(
+                airline: row.airline,
+                from: row.from,
+                to: row.to,
+                fare: row.fare,
+                duration: row.duration
+            )
+            .on_tap { navigate("flight_detail", { id: row.id }) }
+        }
+    }
+    .padding(16)
+    .safe_area()
+}
+
+component FlightCard(
+    airline: String,
+    from: String,
+    to: String,
+    fare: Float,
+    duration: String
+) {
+    Row {
+        Column {
+            Text(airline).font(weight: .semibold)
+            Text("${from} → ${to}").color(.muted).font_size(14)
+            Text(duration).color(.muted).font_size(12)
+        }
+        .flex(1)
+
+        Text("$${fare}")
+            .font(size: 18, weight: .bold)
+            .color(.accent)
+    }
+    .padding(16)
+    .background(.surface)
+    .border_radius(12)
+    .margin(bottom: 8)
+}

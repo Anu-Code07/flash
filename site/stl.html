@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standard Library (STL) — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html">Language</a></li>
+        <li><a href="stl.html" class="active">STL</a></li>
+        <li><a href="components.html">Components</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html">Extensions</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container grid-2">
+    <aside class="sidebar">
+      <h4>Modules</h4>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#types">Types</a></li>
+        <li><a href="#collections">Collections</a></li>
+        <li><a href="#string">String</a></li>
+        <li><a href="#math">Math</a></li>
+        <li><a href="#mobile-stl">Mobile</a></li>
+        <li><a href="#modifiers">Modifiers</a></li>
+        <li><a href="#tokens">Design Tokens</a></li>
+        <li><a href="#animation-curves">Animation Curves</a></li>
+      </ul>
+      <input type="search" id="search" class="search-box" placeholder="Search functions..." style="width:100%;margin-top:1rem;">
+    </aside>
+
+    <main class="content">
+      <h1>Standard Library (STL)</h1>
+      <p>C++ STL-inspired standard library built into every Flash app. Types, collections, string utilities, math, mobile APIs, modifiers, and design tokens — all available without imports.</p>
+
+      <h2 id="overview">Overview</h2>
+      <p>The Flash STL is split into modules. Primitive types and UI builtins are always in scope. Collection/string/math functions are called from Rust view models or via Tier-1 imports. Mobile functions and modifiers are available in <code>.ui</code> handlers and modifier chains.</p>
+
+      <h2 id="types">Primitive Types</h2>
+      <table>
+        <tr><th>Type</th><th>Description</th></tr>
+        <tr><td><code>Int</code></td><td>64-bit signed integer</td></tr>
+        <tr><td><code>Float</code></td><td>64-bit IEEE float</td></tr>
+        <tr><td><code>Bool</code></td><td>true / false</td></tr>
+        <tr><td><code>String</code></td><td>UTF-8 string, supports <code>${interpolation}</code></td></tr>
+        <tr><td><code>Unit</code></td><td>Void type for handlers</td></tr>
+        <tr><td><code>List&lt;T&gt;</code></td><td>Ordered growable collection</td></tr>
+        <tr><td><code>Map&lt;K,V&gt;</code></td><td>Hash map</td></tr>
+        <tr><td><code>Set&lt;T&gt;</code></td><td>Unique element set</td></tr>
+        <tr><td><code>T?</code></td><td>Optional — must be explicitly handled</td></tr>
+      </table>
+
+      <h2 id="collections">Collections</h2>
+      <div class="fn-list">
+        <div class="fn-item"><code>len(collection)</code><span>Returns the number of elements.</span></div>
+        <div class="fn-item"><code>is_empty(collection)</code><span>Returns true if empty.</span></div>
+        <div class="fn-item"><code>first(collection)</code><span>First element or none.</span></div>
+        <div class="fn-item"><code>last(collection)</code><span>Last element or none.</span></div>
+        <div class="fn-item"><code>contains(collection, item)</code><span>True if item exists.</span></div>
+        <div class="fn-item"><code>index_of(collection, item)</code><span>Index or -1.</span></div>
+        <div class="fn-item"><code>filter(collection, pred)</code><span>Elements matching predicate.</span></div>
+        <div class="fn-item"><code>map(collection, fn)</code><span>Transform each element.</span></div>
+        <div class="fn-item"><code>reduce(collection, fn, init)</code><span>Reduce to single value.</span></div>
+        <div class="fn-item"><code>sort_by(collection, key)</code><span>Sort by key function.</span></div>
+        <div class="fn-item"><code>reverse(collection)</code><span>Reverse element order.</span></div>
+        <div class="fn-item"><code>take(collection, n)</code><span>First n elements.</span></div>
+        <div class="fn-item"><code>skip(collection, n)</code><span>Skip first n elements.</span></div>
+        <div class="fn-item"><code>chunk(collection, size)</code><span>Split into fixed-size chunks.</span></div>
+        <div class="fn-item"><code>flat_map(collection, fn)</code><span>Map and flatten one level.</span></div>
+        <div class="fn-item"><code>distinct(collection)</code><span>Remove duplicates.</span></div>
+        <div class="fn-item"><code>zip(a, b)</code><span>Pair two collections.</span></div>
+      </div>
+
+      <h2 id="string">String</h2>
+      <div class="fn-list">
+        <div class="fn-item"><code>trim(s)</code><span>Remove leading/trailing whitespace.</span></div>
+        <div class="fn-item"><code>to_upper(s) / to_lower(s)</code><span>Case conversion.</span></div>
+        <div class="fn-item"><code>capitalize(s)</code><span>Capitalize first character.</span></div>
+        <div class="fn-item"><code>split(s, sep)</code><span>Split into list.</span></div>
+        <div class="fn-item"><code>join(list, sep)</code><span>Join list into string.</span></div>
+        <div class="fn-item"><code>replace(s, from, to)</code><span>Replace first occurrence.</span></div>
+        <div class="fn-item"><code>replace_all(s, from, to)</code><span>Replace all occurrences.</span></div>
+        <div class="fn-item"><code>starts_with(s, prefix)</code><span>Prefix check.</span></div>
+        <div class="fn-item"><code>ends_with(s, suffix)</code><span>Suffix check.</span></div>
+        <div class="fn-item"><code>substring(s, start, end)</code><span>Extract substring.</span></div>
+        <div class="fn-item"><code>format(template, ...)</code><span>Format string with arguments.</span></div>
+        <div class="fn-item"><code>parse_int(s) / parse_float(s)</code><span>Parse number from string.</span></div>
+        <div class="fn-item"><code>ellipsize(s, max_len)</code><span>Truncate with ellipsis — mobile list labels.</span></div>
+        <div class="fn-item"><code>pad_start(s, len, ch) / pad_end(s, len, ch)</code><span>Pad string.</span></div>
+      </div>
+
+      <h2 id="math">Math</h2>
+      <div class="fn-list">
+        <div class="fn-item"><code>abs(x) / min(a,b) / max(a,b)</code><span>Basic math.</span></div>
+        <div class="fn-item"><code>clamp(x, lo, hi)</code><span>Constrain value to range.</span></div>
+        <div class="fn-item"><code>lerp(a, b, t)</code><span>Linear interpolation for animations.</span></div>
+        <div class="fn-item"><code>floor(x) / ceil(x) / round(x)</code><span>Rounding.</span></div>
+        <div class="fn-item"><code>sqrt(x) / pow(x, n)</code><span>Power functions.</span></div>
+        <div class="fn-item"><code>sin(x) / cos(x)</code><span>Trigonometry.</span></div>
+        <div class="fn-item"><code>dp_to_px(dp) / px_to_dp(px)</code><span>Android density conversion.</span></div>
+        <div class="fn-item"><code>sp_to_px(sp)</code><span>Scale-independent pixels to px.</span></div>
+      </div>
+
+      <h2 id="mobile-stl">Mobile APIs</h2>
+      <div class="fn-list">
+        <div class="fn-item"><code>safe_area_top() / bottom() / left() / right()</code><span>Safe area insets (notch, home indicator).</span></div>
+        <div class="fn-item"><code>screen_width() / screen_height()</code><span>Screen dimensions in px.</span></div>
+        <div class="fn-item"><code>is_ios() / is_android() / is_web()</code><span>Platform detection.</span></div>
+        <div class="fn-item"><code>is_tablet() / is_phone()</code><span>Form factor detection.</span></div>
+        <div class="fn-item"><code>is_dark_mode()</code><span>System theme.</span></div>
+        <div class="fn-item"><code>is_landscape()</code><span>Orientation.</span></div>
+        <div class="fn-item"><code>haptic_light() / medium() / heavy()</code><span>Haptic feedback.</span></div>
+        <div class="fn-item"><code>keyboard_height()</code><span>Current keyboard height for layout.</span></div>
+        <div class="fn-item"><code>status_bar_height()</code><span>Status bar height.</span></div>
+        <div class="fn-item"><code>navigate(route, params)</code><span>Navigate to compile-time-checked route.</span></div>
+        <div class="fn-item"><code>navigate_back()</code><span>Pop navigation stack.</span></div>
+        <div class="fn-item"><code>share(text, url)</code><span>Native share sheet.</span></div>
+        <div class="fn-item"><code>open_url(url)</code><span>Open URL in browser/app.</span></div>
+      </div>
+
+      <h2 id="modifiers">Modifiers (30+)</h2>
+      <p>Chain on any UI node. Compiled to flat style records — no runtime cascade.</p>
+      <table>
+        <tr><th>Category</th><th>Modifiers</th></tr>
+        <tr><td>Layout</td><td><code>padding</code>, <code>margin</code>, <code>width</code>, <code>height</code>, <code>fill_max_width</code>, <code>aspect_ratio</code>, <code>flex</code>, <code>gap</code></td></tr>
+        <tr><td>Typography</td><td><code>font</code>, <code>font_size</code>, <code>font_weight</code>, <code>line_height</code>, <code>text_align</code></td></tr>
+        <tr><td>Color</td><td><code>color</code>, <code>background</code>, <code>border</code>, <code>border_radius</code>, <code>shadow</code>, <code>opacity</code></td></tr>
+        <tr><td>Mobile</td><td><code>safe_area</code>, <code>status_bar_padding</code>, <code>keyboard_avoiding</code></td></tr>
+        <tr><td>Interaction</td><td><code>on_tap</code>, <code>on_long_press</code>, <code>on_swipe</code>, <code>disabled</code></td></tr>
+        <tr><td>Animation</td><td><code>with_animation</code>, <code>animate_opacity</code>, <code>animate_offset</code>, <code>animate_scale</code></td></tr>
+      </table>
+
+      <h2 id="tokens">Design Tokens</h2>
+      <pre><code>.<span class="type">primary</span>    .<span class="type">secondary</span>   .<span class="type">surface</span>    .<span class="type">background</span>
+.<span class="type">error</span>      .<span class="type">on_primary</span>  .<span class="type">on_surface</span> .<span class="type">divider</span>      .<span class="type">accent</span></code></pre>
+      <p>Tokens resolve through the theme table. Light/dark switching updates the table and invalidates only nodes bound to token-valued properties.</p>
+
+      <h2 id="animation-curves">Animation Curves</h2>
+      <pre><code>.linear
+.ease_in
+.ease_out
+.ease_in_out(duration: <span class="num">300</span>)
+.spring(damping: <span class="num">0.8</span>, stiffness: <span class="num">300</span>)
+.decay</code></pre>
+      <p>Curves compile to Core Animation (iOS), ObjectAnimator (Android), and WAAPI (Web). Zero per-frame FFI during animation.</p>
+    </main>
+  </div>
+  <footer><p>Flash STL Reference</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

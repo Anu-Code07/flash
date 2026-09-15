@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extensions — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html">Language</a></li>
+        <li><a href="stl.html">STL</a></li>
+        <li><a href="components.html">Components</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html" class="active">Extensions</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container content">
+    <h1>Extensions</h1>
+    <p>Flash extensions let you extend the language with custom modifiers, view models, and platform hooks — without forking the compiler.</p>
+
+    <h2>Modifier extensions</h2>
+    <p>Chain custom styling on any node. Extensions compile to flat style records in the IR.</p>
+    <pre><code><span class="cm">// Define in a .uiext file or Rust crate</span>
+<span class="kw">extension</span> CardStyle <span class="kw">on</span> Column {
+    <span class="kw">fn</span> card() {
+        self
+            .<span class="fn">padding</span>(<span class="num">16</span>)
+            .<span class="fn">background</span>(.<span class="type">surface</span>)
+            .<span class="fn">border_radius</span>(<span class="num">12</span>)
+            .<span class="fn">shadow</span>(radius: <span class="num">4</span>, opacity: <span class="num">0.1</span>)
+    }
+}
+
+<span class="cm">// Usage in .ui</span>
+<span class="fn">Column</span> { <span class="fn">Text</span>(<span class="str">"Hello"</span>) }.card()</code></pre>
+
+    <h2>View model extensions</h2>
+    <p>Export Rust structs to <code>.ui</code> with <code>#[ui_export]</code>. The compiler reads <code>.uiapi</code> manifests at build time.</p>
+    <pre><code><span class="cm">// crates/presentation/src/counter_vm.rs</span>
+<span class="attr">#[ui_export]</span>
+<span class="kw">pub struct</span> CounterViewModel {
+    <span class="attr">#[ui_export(read)]</span>  <span class="kw">pub</span> count: i64,
+    <span class="attr">#[ui_export(read)]</span>  <span class="kw">pub</span> high_score: i64,
+}
+
+<span class="attr">#[ui_export]</span>
+<span class="kw">impl</span> CounterViewModel {
+    <span class="attr">#[ui_export(writes = "count, high_score")]</span>
+    <span class="kw">pub fn</span> increment(&<span class="kw">mut</span> self) {
+        self.count += <span class="num">1</span>;
+        if self.count > self.high_score {
+            self.high_score = self.count;
+        }
+    }
+}</code></pre>
+
+    <h2>Platform extensions</h2>
+    <p>Call native SDKs from Rust. Swift/Kotlin code stays in thin platform adapters — never in <code>.ui</code>.</p>
+    <table>
+      <tr><th>Platform</th><th>Mechanism</th><th>Use case</th></tr>
+      <tr><td>iOS</td><td>C FFI → Swift</td><td>HealthKit, CoreLocation, StoreKit</td></tr>
+      <tr><td>Android</td><td>JNI → Kotlin</td><td>Play Billing, FusedLocation, CameraX</td></tr>
+      <tr><td>Web</td><td>WASM imports</td><td>Web APIs, localStorage</td></tr>
+    </table>
+
+    <h2>Collection extensions</h2>
+    <p>Extend STL collections with custom algorithms in Rust, callable from view models.</p>
+    <pre><code><span class="cm">// stl extension — registered at compile time</span>
+<span class="kw">extension</span> List&lt;Flight&gt; {
+    <span class="kw">fn</span> cheapest() -> Flight? {
+        self.reduce(|a, b| if a.fare &lt; b.fare { a } <span class="kw">else</span> { b })
+    }
+
+    <span class="kw">fn</span> by_airline(name: String) -> List&lt;Flight&gt; {
+        self.filter(|f| f.airline == name)
+    }
+}</code></pre>
+
+    <h2>Animation extensions</h2>
+    <p>Custom curves and transitions compile to platform animators — zero per-frame FFI.</p>
+    <pre><code><span class="cm">// Built-in curves</span>
+.with_animation(duration: <span class="num">300</span>, curve: .ease_in_out)
+.with_animation(duration: <span class="num">500</span>, curve: .spring(damping: <span class="num">0.8</span>, stiffness: <span class="num">300</span>))
+
+<span class="cm">// Custom extension</span>
+<span class="kw">extension</span> FadeTransition {
+    <span class="kw">fn</span> fade_in(duration: Int = <span class="num">400</span>) {
+        self
+            .<span class="fn">opacity</span>(<span class="num">0</span>)
+            .<span class="fn">with_animation</span>(duration: duration, curve: .ease_out)
+            .<span class="fn">opacity</span>(<span class="num">1</span>)
+    }
+}</code></pre>
+
+    <h2>Navigation extensions</h2>
+    <p>Routes are compile-time checked. Params are typed.</p>
+    <pre><code><span class="cm">// routes.ui — generated route table</span>
+<span class="kw">route</span> Home
+<span class="kw">route</span> Flights(query: String)
+<span class="kw">route</span> FlightDetail(id: String)
+
+<span class="cm">// Usage</span>
+navigate(<span class="str">"flights"</span>, { query: <span class="str">"SFO-LAX"</span> })
+navigate_back()</code></pre>
+
+    <h2>Design token extensions</h2>
+    <p>Extend the theme with custom tokens. Tokens resolve at compile time.</p>
+    <pre><code><span class="cm">// theme.flash.toml</span>
+[tokens]
+brand = "#6366F1"
+on_brand = "#FFFFFF"
+card_elevated = "#F8FAFC"
+
+<span class="cm">// Usage in .ui</span>
+.<span class="fn">color</span>(.<span class="type">brand</span>)
+.<span class="fn">background</span>(.<span class="type">card_elevated</span>)</code></pre>
+  </div>
+
+  <footer><p>Flash Extensions Reference</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

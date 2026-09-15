@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Development — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html">Language</a></li>
+        <li><a href="stl.html">STL</a></li>
+        <li><a href="components.html">Components</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html">Extensions</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html" class="active">Mobile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container content">
+    <h1>Mobile Development Guide</h1>
+    <p>Flash is built mobile-first. iOS and Android are primary targets; Web follows.</p>
+
+    <h2>Architecture on device</h2>
+    <pre><code>.ui source
+    ↓ compile (on dev machine)
+UI IR + dependency table + generated Rust
+    ↓ link
+Rust static lib (.a) / .so
+    ↓ one FFI crossing per frame
+iOS: Swift/UIKit host     Android: Kotlin/View host
+    ↓
+Native widgets on screen</code></pre>
+
+    <h2>iOS</h2>
+    <table>
+      <tr><th>Item</th><th>Detail</th></tr>
+      <tr><td>Target</td><td><code>aarch64-apple-ios</code></td></tr>
+      <tr><td>FFI</td><td>C static lib + vtable</td></tr>
+      <tr><td>Frame driver</td><td>CADisplayLink</td></tr>
+      <tr><td>Widgets</td><td>UILabel, UIButton, UIStackView → FlashLayoutView</td></tr>
+      <tr><td>Animation</td><td>CABasicAnimation / UIViewPropertyAnimator</td></tr>
+      <tr><td>HTTP</td><td>URLSession via platform port</td></tr>
+    </table>
+    <pre><code>flash run ios              <span class="cm"># Build + install simulator</span>
+flash run ios --device     <span class="cm"># Physical device</span>
+flash build --release ios  <span class="cm"># App Store build</span></code></pre>
+
+    <h2>Android</h2>
+    <table>
+      <tr><th>Item</th><th>Detail</th></tr>
+      <tr><td>Target</td><td><code>aarch64-linux-android</code></td></tr>
+      <tr><td>FFI</td><td>JNI + direct ByteBuffer</td></tr>
+      <tr><td>Frame driver</td><td>Choreographer</td></tr>
+      <tr><td>Widgets</td><td>TextView, MaterialButton, FlashFlexLayout</td></tr>
+      <tr><td>Animation</td><td>ObjectAnimator / ViewPropertyAnimator</td></tr>
+      <tr><td>HTTP</td><td>OkHttp via platform port</td></tr>
+    </table>
+    <pre><code>flash run android
+flash build --release android</code></pre>
+
+    <h2>Mobile-specific STL</h2>
+    <pre><code><span class="cm">// Safe area for notch / home indicator</span>
+<span class="fn">Column</span> { ... }
+    .<span class="fn">safe_area</span>()
+    .<span class="fn">padding</span>(top: safe_area_top())
+
+<span class="cm">// Haptic feedback on tap</span>
+<span class="fn">Button</span>(<span class="str">"Delete"</span>) {
+    haptic_heavy()
+    vm.delete()
+}
+
+<span class="cm">// Keyboard-aware layout</span>
+<span class="fn">TextField</span>(<span class="str">"Message"</span>)
+    .<span class="fn">keyboard_avoiding</span>()
+
+<span class="cm">// Dark mode aware styling</span>
+<span class="fn">Text</span>(<span class="str">"Hello"</span>)
+    .<span class="fn">color</span>(is_dark_mode() ? .<span class="type">on_surface</span> : .<span class="type">primary</span>)</code></pre>
+
+    <h2>Performance targets</h2>
+    <table>
+      <tr><th>Metric</th><th>Target</th></tr>
+      <tr><td>State update latency</td><td>1 native set_prop per mutation</td></tr>
+      <tr><td>Animation (1000 nodes)</td><td>0 FFI crossings during animation</td></tr>
+      <tr><td>Runtime size</td><td>&lt;100KB stripped core</td></tr>
+      <tr><td>List scroll</td><td>RecyclerView / UICollectionView cell reuse</td></tr>
+      <tr><td>Hot reload</td><td>&lt;1s for .ui edits</td></tr>
+    </table>
+
+    <h2>vs Flutter / React Native on mobile</h2>
+    <table>
+      <tr><th></th><th>Flash</th><th>Flutter</th><th>React Native</th></tr>
+      <tr><td>Widgets</td><td>Native UILabel/TextView</td><td>Custom draw</td><td>Native (new arch)</td></tr>
+      <tr><td>Bridge</td><td>1 batch/frame</td><td>None (in-process)</td><td>JSI (minimal)</td></tr>
+      <tr><td>Updates</td><td>Compile-time deps</td><td>Widget rebuild</td><td>Reconciler</td></tr>
+      <tr><td>A11y</td><td>Free (native)</td><td>Built-in engine</td><td>Native</td></tr>
+      <tr><td>Binary size</td><td>Target: smaller</td><td>~5MB+ engine</td><td>~3MB+ Hermes</td></tr>
+    </table>
+
+    <h2>Project layout for a mobile app</h2>
+    <pre><code>my_app/
+├── ui/screens/           <span class="cm"># .ui files</span>
+├── crates/
+│   ├── presentation/     <span class="cm"># View models → .ui</span>
+│   ├── application/      <span class="cm"># Use cases</span>
+│   └── infrastructure/   <span class="cm"># HTTP, storage</span>
+├── platform/
+│   ├── ios/              <span class="cm"># Xcode project</span>
+│   └── android/          <span class="cm"># Gradle project</span>
+└── flash.toml</code></pre>
+  </div>
+  <footer><p>Flash Mobile Guide</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

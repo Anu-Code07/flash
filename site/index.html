@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flash — Compiled UI for Mobile</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html">Language</a></li>
+        <li><a href="stl.html">STL</a></li>
+        <li><a href="components.html">Components</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html">Extensions</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+        <li><a href="https://github.com/Anu-Code07/flash">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>UI that compiles.<br><span>Native on mobile.</span></h1>
+    <p>Flash is a compiled cross-platform UI framework for iOS, Android, and Web. Write declarative <code>.ui</code> files, business logic in Rust, get native performance with zero JavaScript and no virtual DOM.</p>
+    <div class="badges">
+      <span class="badge">📱 iOS + Android + Web</span>
+      <span class="badge">⚡ Compile-time reactivity</span>
+      <span class="badge">🦀 Rust business logic</span>
+      <span class="badge">🎯 Native widgets</span>
+      <span class="badge">📦 C++-style STL</span>
+    </div>
+    <div class="cta-row">
+      <a href="language.html" class="btn btn-primary">Get Started</a>
+      <a href="examples.html" class="btn btn-secondary">View Examples</a>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="platforms">
+      <div class="platform">
+        <div class="icon">🍎</div>
+        <h3>iOS</h3>
+        <p>UIKit via static lib + C FFI. CADisplayLink frame driver.</p>
+      </div>
+      <div class="platform">
+        <div class="icon">🤖</div>
+        <h3>Android</h3>
+        <p>View system via JNI + ByteBuffer. Choreographer vsync.</p>
+      </div>
+      <div class="platform">
+        <div class="icon">🌐</div>
+        <h3>Web</h3>
+        <p>WASM + DOM shim. Fine-grained updates, no virtual DOM.</p>
+      </div>
+    </div>
+
+    <h2 style="text-align:center;margin:3rem 0 1.5rem;font-size:1.5rem;">Why Flash?</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Compile-time reactivity</h3>
+        <p><code>count → Text#1</code> is computed at compile time. One state change updates exactly one native property — no tree rebuild, no diff.</p>
+        <div class="tag">vs Flutter rebuild / Compose recompose</div>
+      </div>
+      <div class="card">
+        <h3>Native widgets</h3>
+        <p>UILabel, TextView, MaterialButton — real platform views with free accessibility, text shaping, and OS integration.</p>
+        <div class="tag">vs custom renderers</div>
+      </div>
+      <div class="card">
+        <h3>Minimal runtime</h3>
+        <p>Dependency graph is static. Runtime is slot storage + flush loop. Target: &lt;100KB stripped core.</p>
+        <div class="tag">vs JS bridge / GC frameworks</div>
+      </div>
+      <div class="card">
+        <h3>Rich STL</h3>
+        <p>C++-style standard library: collections, strings, math, mobile APIs, 30+ modifiers, design tokens, animation curves.</p>
+        <div class="tag">Built for mobile dev</div>
+      </div>
+      <div class="card">
+        <h3>Rust business logic</h3>
+        <p>View models with <code>#[ui_export]</code>. Clean architecture: domain → application → presentation → .ui</p>
+        <div class="tag">Type-safe across boundary</div>
+      </div>
+      <div class="card">
+        <h3>Platform animations</h3>
+        <p><code>.withAnimation</code> compiles to Core Animation / Android Animator. Zero per-frame FFI during animation.</p>
+        <div class="tag">Compositor-only properties</div>
+      </div>
+    </div>
+
+    <h2 style="margin:3rem 0 1rem;">Quick start</h2>
+    <pre><code><span class="cm"># Install Flash CLI</span>
+cargo install flash-cli
+
+<span class="cm"># Create a counter app</span>
+flash create my_app
+cd my_app
+
+<span class="cm"># Run on simulator</span>
+flash run ios
+flash run android
+
+<span class="cm"># Hot reload during development</span>
+flash dev</code></pre>
+
+    <pre><code><span class="cm">// ui/screens/home.ui</span>
+<span class="kw">screen</span> Home {
+    <span class="kw">state</span> count: <span class="type">Int</span> = <span class="num">0</span>
+
+    <span class="fn">Column</span> {
+        <span class="fn">Text</span>(<span class="str">"Count: ${count}"</span>)
+            .<span class="fn">font</span>(size: <span class="num">24</span>, weight: .bold)
+            .<span class="fn">color</span>(.<span class="type">primary</span>)
+
+        <span class="fn">Button</span>(<span class="str">"Increment"</span>) {
+            count++
+        }
+    }
+}</code></pre>
+  </div>
+
+  <footer>
+    <p>Flash UI Framework — compiled, native, mobile-first.</p>
+    <p style="margin-top:0.5rem"><a href="language.html">Language</a> · <a href="stl.html">STL</a> · <a href="examples.html">Examples</a> · <a href="mobile.html">Mobile Guide</a></p>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

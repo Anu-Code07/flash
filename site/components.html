@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Components — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html">Language</a></li>
+        <li><a href="stl.html">STL</a></li>
+        <li><a href="components.html" class="active">Components</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html">Extensions</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container content">
+    <h1>Built-in Components</h1>
+    <p>Flash ships a focused set of primitives mapped to native platform widgets. All components support modifier chains.</p>
+
+    <h2>Layout</h2>
+    <table>
+      <tr><th>Component</th><th>iOS</th><th>Android</th><th>Description</th></tr>
+      <tr><td><code>Column</code></td><td>UIStackView / FlashLayoutView</td><td>FlashFlexLayout</td><td>Vertical flex container</td></tr>
+      <tr><td><code>Row</code></td><td>UIStackView / FlashLayoutView</td><td>FlashFlexLayout</td><td>Horizontal flex container</td></tr>
+      <tr><td><code>Stack</code></td><td>UIView (z-order)</td><td>FrameLayout</td><td>Overlapping children</td></tr>
+      <tr><td><code>ScrollView</code></td><td>UIScrollView</td><td>NestedScrollView</td><td>Scrollable content</td></tr>
+    </table>
+
+    <h2>Display</h2>
+    <table>
+      <tr><th>Component</th><th>iOS</th><th>Android</th><th>Description</th></tr>
+      <tr><td><code>Text</code></td><td>UILabel</td><td>TextView</td><td>Static or bound text. Supports <code>${interpolation}</code></td></tr>
+      <tr><td><code>Image</code></td><td>UIImageView</td><td>ImageView</td><td>Remote or local image via URL</td></tr>
+      <tr><td><code>Loading</code></td><td>UIActivityIndicator</td><td>ProgressBar</td><td>Loading spinner</td></tr>
+    </table>
+
+    <h2>Input</h2>
+    <table>
+      <tr><th>Component</th><th>iOS</th><th>Android</th><th>Description</th></tr>
+      <tr><td><code>Button</code></td><td>UIButton</td><td>MaterialButton</td><td>Tappable button with handler block</td></tr>
+      <tr><td><code>TextField</code></td><td>UITextField</td><td>EditText</td><td>Text input with two-way binding</td></tr>
+    </table>
+
+    <h2>Lists</h2>
+    <table>
+      <tr><th>Component</th><th>iOS</th><th>Android</th><th>Description</th></tr>
+      <tr><td><code>List</code></td><td>UICollectionView</td><td>RecyclerView</td><td>Keyed virtualized list. Always use <code>key:</code></td></tr>
+    </table>
+
+    <h2>Examples</h2>
+    <h3>Text with modifiers</h3>
+    <pre><code><span class="fn">Text</span>(<span class="str">"Hello, Flash"</span>)
+    .<span class="fn">font</span>(size: <span class="num">28</span>, weight: .bold)
+    .<span class="fn">color</span>(.<span class="type">primary</span>)
+    .<span class="fn">padding</span>(horizontal: <span class="num">16</span>, vertical: <span class="num">8</span>)
+    .<span class="fn">safe_area</span>()</code></pre>
+
+    <h3>Button with handler</h3>
+    <pre><code><span class="fn">Button</span>(<span class="str">"Continue"</span>) {
+    haptic_light()
+    navigate(<span class="str">"/payment"</span>, orderId: order.id)
+}</code></pre>
+
+    <h3>Image from URL</h3>
+    <pre><code><span class="fn">Image</span>(product.imageUrl)
+    .<span class="fn">aspect_ratio</span>(<span class="num">1.0</span>)
+    .<span class="fn">border_radius</span>(<span class="num">12</span>)
+    .<span class="fn">fill_max_width</span>()</code></pre>
+
+    <h3>TextField with binding</h3>
+    <pre><code><span class="fn">TextField</span>(<span class="str">"Search flights..."</span>)
+    .<span class="fn">keyboard_avoiding</span>() {
+    query = value
+    vm.search(query)
+}</code></pre>
+  </div>
+  <footer><p>Flash Components</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

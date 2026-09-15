@@ -1,11 +1,12 @@
 //! Flash platform layer — mobile-first (iOS, Android) with web support.
 //!
 //! Architecture:
-//! ```
-//! UI IR → Renderer trait → Platform adapter
-//!   ├── iOS:     C vtable → Swift/UIKit
-//!   ├── Android: JNI       → Kotlin/View
-//!   └── Web:     WASM      → DOM shim
+//!
+//! ```text
+//! UI IR -> Renderer trait -> Platform adapter
+//!   - iOS:     C vtable -> Swift/UIKit
+//!   - Android: JNI       -> Kotlin/View
+//!   - Web:     WASM      -> DOM shim
 //! ```
 
 pub mod target;

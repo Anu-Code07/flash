@@ -1,0 +1,69 @@
+screen TabRoot {
+    state selected: Int = 0
+
+    Column {
+        // Content area
+        if selected == 0 {
+            HomeTab()
+        } else if selected == 1 {
+            SearchTab()
+        } else {
+            ProfileTab()
+        }
+
+        // Bottom tab bar
+        Row {
+            TabItem(label: "Home", icon: "house", active: selected == 0) {
+                selected = 0
+                haptic_light()
+            }
+            TabItem(label: "Search", icon: "search", active: selected == 1) {
+                selected = 1
+            }
+            TabItem(label: "Profile", icon: "person", active: selected == 2) {
+                selected = 2
+            }
+        }
+        .fill_max_width()
+        .padding(horizontal: 16, vertical: 8)
+        .safe_area(bottom: true)
+    }
+}
+
+component HomeTab {
+    Column {
+        Text("Home").font(size: 24, weight: .bold)
+        Text("Your feed appears here.")
+            .color(.muted)
+    }
+    .padding(24)
+}
+
+component SearchTab {
+    Column {
+        Text("Search").font(size: 24, weight: .bold)
+        TextField(placeholder: "Search flights, hotels...")
+            .padding(12)
+            .border_radius(8)
+            .background(.surface)
+    }
+    .padding(24)
+}
+
+component ProfileTab {
+    Column {
+        Text("Profile").font(size: 24, weight: .bold)
+        Text("Signed in as guest")
+            .color(.muted)
+    }
+    .padding(24)
+}
+
+component TabItem(label: String, icon: String, active: Bool) {
+    Column {
+        Text(icon)
+        Text(label).font_size(12)
+    }
+    .opacity(active ? 1.0 : 0.5)
+    .flex(1)
+}
