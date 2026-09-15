@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Comparison — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="language.html">Language</a></li>
+        <li><a href="stl.html">STL</a></li>
+        <li><a href="components.html">Components</a></li>
+        <li><a href="widgets.html" class="active">vs Flutter/RN</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="extensions.html">Extensions</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container content">
+    <h1>Flash vs Flutter vs React Native</h1>
+    <p>How Flash's component model compares to the two dominant mobile UI frameworks.</p>
+
+    <h2>Scale</h2>
+    <table>
+      <tr><th>Framework</th><th>Widget count</th><th>Philosophy</th></tr>
+      <tr><td><strong>Flutter</strong></td><td>~528</td><td>Full design system (Material 3 + Cupertino) + base layout/animation</td></tr>
+      <tr><td><strong>React Native</strong></td><td>~25 core</td><td>Thin native wrappers; npm packages fill the rest</td></tr>
+      <tr><td><strong>Flash</strong></td><td>10 + 30 modifiers</td><td>Native views + modifier chains + STL</td></tr>
+    </table>
+
+    <h2>React Native core → Flash mapping</h2>
+    <table>
+      <tr><th>RN Component</th><th>iOS</th><th>Android</th><th>Flash</th><th>Status</th></tr>
+      <tr><td><code>View</code></td><td>UIView</td><td>ViewGroup</td><td><code>Column</code> / <code>Row</code> / <code>Stack</code></td><td>✅</td></tr>
+      <tr><td><code>Text</code></td><td>UILabel</td><td>TextView</td><td><code>Text</code></td><td>✅</td></tr>
+      <tr><td><code>Image</code></td><td>UIImageView</td><td>ImageView</td><td><code>Image</code></td><td>✅</td></tr>
+      <tr><td><code>TextInput</code></td><td>UITextField</td><td>EditText</td><td><code>TextField</code></td><td>✅</td></tr>
+      <tr><td><code>Pressable</code></td><td>touch</td><td>touch</td><td><code>Button</code> + <code>.on_tap</code></td><td>✅</td></tr>
+      <tr><td><code>ScrollView</code></td><td>UIScrollView</td><td>ScrollView</td><td><code>ScrollView</code></td><td>✅</td></tr>
+      <tr><td><code>FlatList</code></td><td>UICollectionView</td><td>RecyclerView</td><td><code>List</code> (keyed)</td><td>🟡</td></tr>
+      <tr><td><code>SectionList</code></td><td>sectioned</td><td>sectioned</td><td><code>SectionList</code></td><td>❌</td></tr>
+      <tr><td><code>Switch</code></td><td>UISwitch</td><td>Switch</td><td><code>Switch</code></td><td>❌</td></tr>
+      <tr><td><code>Modal</code></td><td>modal VC</td><td>DialogFragment</td><td><code>Modal</code> / <code>Sheet</code></td><td>❌</td></tr>
+      <tr><td><code>ActivityIndicator</code></td><td>UIActivityIndicator</td><td>ProgressBar</td><td><code>Loading</code></td><td>✅</td></tr>
+      <tr><td><code>StyleSheet</code></td><td>—</td><td>—</td><td>modifier chains</td><td>✅</td></tr>
+    </table>
+    <p><strong>8/12</strong> React Native core components covered. Gap: Switch, Modal, SectionList, pull-to-refresh.</p>
+
+    <h2>Flutter categories → Flash</h2>
+    <p>Flutter ships 182 Material + 50 Cupertino widgets, but most are styling variants. Flash's modifiers replace ~200 Flutter styling widgets (<code>Padding</code>, <code>Center</code>, <code>ColoredBox</code>, <code>DecoratedBox</code>, etc.).</p>
+
+    <h3>Layout</h3>
+    <table>
+      <tr><th>Flutter</th><th>Flash</th><th>Status</th></tr>
+      <tr><td><code>Column</code> / <code>Row</code> / <code>Stack</code></td><td><code>Column</code> / <code>Row</code> / <code>Stack</code></td><td>✅</td></tr>
+      <tr><td><code>Expanded</code> / <code>Flexible</code></td><td><code>.flex()</code> modifier</td><td>✅</td></tr>
+      <tr><td><code>Padding</code> / <code>Center</code> / <code>SizedBox</code></td><td><code>.padding()</code> / <code>.align()</code> / <code>.width()</code></td><td>✅</td></tr>
+      <tr><td><code>Wrap</code></td><td><code>Wrap</code></td><td>❌ Phase 5b</td></tr>
+      <tr><td><code>GridView</code></td><td><code>Grid</code></td><td>❌ Phase 6</td></tr>
+    </table>
+
+    <h3>Input</h3>
+    <table>
+      <tr><th>Flutter</th><th>Flash</th><th>Status</th></tr>
+      <tr><td><code>ElevatedButton</code> / <code>TextButton</code></td><td><code>Button</code> (styled via modifiers)</td><td>✅</td></tr>
+      <tr><td><code>TextField</code></td><td><code>TextField</code></td><td>✅</td></tr>
+      <tr><td><code>Switch</code> / <code>Checkbox</code> / <code>Radio</code></td><td><code>Switch</code> / <code>Checkbox</code> / <code>Radio</code></td><td>❌ Phase 5c</td></tr>
+      <tr><td><code>Slider</code> / <code>DropdownButton</code></td><td><code>Slider</code> / <code>Picker</code></td><td>❌ Phase 6</td></tr>
+    </table>
+
+    <h3>Navigation</h3>
+    <table>
+      <tr><th>Flutter</th><th>Flash</th><th>Status</th></tr>
+      <tr><td><code>Navigator</code> / <code>MaterialPageRoute</code></td><td><code>navigate()</code> STL</td><td>🟡</td></tr>
+      <tr><td><code>BottomNavigationBar</code> / <code>CupertinoTabBar</code></td><td><code>TabBar</code></td><td>🟡 example</td></tr>
+      <tr><td><code>AppBar</code> / <code>CupertinoNavigationBar</code></td><td><code>AppBar</code></td><td>❌ Phase 5c</td></tr>
+      <tr><td><code>BottomSheet</code> / <code>CupertinoActionSheet</code></td><td><code>Sheet</code> / <code>ActionSheet</code></td><td>❌ Phase 5c</td></tr>
+    </table>
+
+    <h3>Animation</h3>
+    <table>
+      <tr><th>Flutter</th><th>Flash</th><th>Status</th></tr>
+      <tr><td><code>AnimatedContainer</code></td><td><code>.with_animation()</code></td><td>🟡 IR types</td></tr>
+      <tr><td><code>AnimatedOpacity</code></td><td><code>.animate_opacity()</code></td><td>🟡 modifier</td></tr>
+      <tr><td><code>Hero</code> (shared element)</td><td>platform transition</td><td>❌ Phase 7</td></tr>
+      <tr><td><code>AnimationController</code></td><td><code>PlatformAnimator</code> trait</td><td>🟡</td></tr>
+    </table>
+
+    <h2>Why Flash doesn't need 528 widgets</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Modifiers replace styling widgets</h3>
+        <p>Flutter's <code>Padding</code>, <code>Center</code>, <code>ColoredBox</code>, <code>DecoratedBox</code> → Flash modifier chains on a single node.</p>
+      </div>
+      <div class="card">
+        <h3>STL replaces npm packages</h3>
+        <p>RN's safe-area-context, haptic-feedback, Share, navigation → built-in STL functions.</p>
+      </div>
+      <div class="card">
+        <h3>Native widgets, not a renderer</h3>
+        <p>UILabel, TextView, MaterialButton — free accessibility, text shaping, OS integration.</p>
+      </div>
+      <div class="card">
+        <h3>Platform animators, not per-frame FFI</h3>
+        <p>Core Animation / Android Animator for 60fps — beats both RN Reanimated and Flutter's rebuild model.</p>
+      </div>
+    </div>
+
+    <h2>Next components (Phase 5c)</h2>
+    <table>
+      <tr><th>Priority</th><th>Component</th><th>Flutter</th><th>React Native</th></tr>
+      <tr><td>P0</td><td><code>Switch</code></td><td>Switch</td><td>Switch</td></tr>
+      <tr><td>P0</td><td><code>AppBar</code></td><td>AppBar</td><td>navigation header</td></tr>
+      <tr><td>P0</td><td><code>TabBar</code></td><td>BottomNavigationBar</td><td>tab navigator</td></tr>
+      <tr><td>P0</td><td><code>Modal</code> / <code>Sheet</code></td><td>BottomSheet</td><td>Modal</td></tr>
+      <tr><td>P0</td><td><code>Icon</code></td><td>Icon</td><td>icon font</td></tr>
+      <tr><td>P1</td><td><code>Checkbox</code>, <code>Divider</code>, <code>ProgressBar</code></td><td>Checkbox, Divider, LinearProgressIndicator</td><td>checkbox lib, View border, ProgressBarAndroid</td></tr>
+      <tr><td>P1</td><td><code>SectionList</code>, <code>Avatar</code>, <code>Badge</code></td><td>ListView sections, CircleAvatar, Badge</td><td>SectionList, image, badge lib</td></tr>
+    </table>
+  </div>
+
+  <footer><p>Flash Widget Comparison</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

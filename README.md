@@ -39,6 +39,7 @@ Or open `site/index.html` directly. Pages include:
 - [Developer guide — UI + business logic](docs/developer-guide.md)
 - [Flash vs KMP vs Flutter](docs/comparison.md)
 - [Animation and layout — known weaknesses and mitigations](docs/animation-and-layout.md)
+- [Widget comparison — Flash vs Flutter vs React Native](docs/widgets-comparison.md)
 
 Key points from that doc:
 

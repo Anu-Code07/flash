@@ -25,7 +25,20 @@
 
   <div class="container content">
     <h1>Built-in Components</h1>
-    <p>Flash ships a focused set of primitives mapped to native platform widgets. All components support modifier chains.</p>
+    <p>Flash ships a focused set of primitives mapped to native platform widgets. All components support modifier chains. See the <a href="widgets.html">Flutter &amp; React Native comparison</a> for full coverage analysis.</p>
+
+    <h2>vs Flutter &amp; React Native</h2>
+    <table>
+      <tr><th></th><th>React Native</th><th>Flutter</th><th>Flash</th></tr>
+      <tr><td>Core components</td><td>~12</td><td>~528 (40 primitives)</td><td>10 + 30 modifiers</td></tr>
+      <tr><td>Renderer</td><td>Native views</td><td>Skia/Impeller</td><td>Native views</td></tr>
+      <tr><td>Styling</td><td>StyleSheet</td><td>Widget tree</td><td>Modifier chains</td></tr>
+      <tr><td>Lists</td><td>FlatList, SectionList</td><td>ListView, GridView</td><td>List (keyed)</td></tr>
+      <tr><td>Navigation</td><td>React Navigation (npm)</td><td>Navigator</td><td>navigate() STL</td></tr>
+      <tr><td>Animation</td><td>Reanimated (npm)</td><td>AnimationController</td><td>Platform animators</td></tr>
+      <tr><td>Safe area</td><td>safe-area-context (npm)</td><td>SafeArea widget</td><td>.safe_area() modifier</td></tr>
+    </table>
+    <p>Flash covers 8/12 React Native core components today. Flutter's 528 widgets collapse to ~40 primitives — Flash's modifier system replaces ~200 of Flutter's styling widgets (<code>Padding</code>, <code>Center</code>, <code>ColoredBox</code>, etc.).</p>
 
     <h2>Layout</h2>
     <table>
