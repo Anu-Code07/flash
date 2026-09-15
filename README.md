@@ -36,6 +36,7 @@ Or open `site/index.html` directly. Pages include:
 
 ## Design docs
 
+- [State management — `@provider` (Riverpod-style, compile-time)](docs/state-management.md)
 - [Developer guide — UI + business logic](docs/developer-guide.md)
 - [Flash vs KMP vs Flutter](docs/comparison.md)
 - [Animation and layout — known weaknesses and mitigations](docs/animation-and-layout.md)

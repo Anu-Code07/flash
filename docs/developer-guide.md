@@ -124,62 +124,66 @@ No Rust business logic. This works today (Phase 1–2).
 
 ---
 
-## Example 2: Counter with saved high score (needs Rust)
+## Example 2: Counter with high score (`@provider`)
 
-When logic grows beyond `count++`, move it to a Rust view model.
+Use `@provider` for state — Riverpod-style DX, compile-time dependency tracking.
+No manual `writes` annotations.
 
-**`crates/presentation/src/counter_vm.rs`**
+**`ui/screens/home.ui`** (simple — stays in `.ui`)
 
-```rust
-use flash_export::ui_export;
+```text
+@provider Counter {
+    @state count: Int = 0
+    @state high_score: Int = 0
 
-#[ui_export]
-pub struct CounterViewModel {
-    count: i64,
-    high_score: i64,
+    @action increment() {
+        count++
+        if count > high_score { high_score = count }
+    }
+
+    @action reset() { count = 0 }
 }
 
-#[ui_export]
-impl CounterViewModel {
-    pub fn count(&self) -> i64 { self.count }
-    pub fn high_score(&self) -> i64 { self.high_score }
+screen Home {
+    @inject counter: Counter
 
-    #[ui_export(writes = "count, high_score")]
+    Column {
+        Text("Count: ${counter.count}")
+        Text("High score: ${counter.high_score}")
+        Row {
+            Button("Increment") { counter.increment() }
+            Button("Reset")       { counter.reset() }
+        }
+    }
+}
+```
+
+Compiler infers: `increment` writes `[count, high_score]`, `reset` writes `[count]`.
+`${counter.count}` auto-registers a watch on `Text#1` — no `ref.watch()` needed.
+
+**Rust version** (when logic needs HTTP, validation, etc.):
+
+```rust
+#[provider]
+pub struct Counter {
+    #[state] count: i64,
+    #[state] high_score: i64,
+}
+
+#[provider]
+impl Counter {
+    #[action]  // writes inferred from body — no writes = "..." attribute
     pub fn increment(&mut self) {
         self.count += 1;
         if self.count > self.high_score {
             self.high_score = self.count;
         }
     }
-
-    #[ui_export(writes = "count")]
-    pub fn reset(&mut self) {
-        self.count = 0;
-    }
 }
 ```
 
-The `#[ui_export]` macro emits `presentation.uiapi` — a manifest the `.ui`
-compiler reads so it knows types, methods, and which state slots each method writes.
-
-**`ui/screens/home.ui`**
-
-```text
-use presentation::CounterViewModel
-
-screen Home(vm: CounterViewModel) {
-
-    Column {
-        Text("Count: ${vm.count}")
-        Text("High score: ${vm.high_score}")
-
-        Row {
-            Button("Increment") { vm.increment() }
-            Button("Reset")       { vm.reset() }
-        }
-    }
-}
-```
+See [State management — `@provider`](state-management.md) for async providers,
+scopes, families, and `@listen`.
 
 **`crates/app/src/main.rs`** (composition root — wires dependencies)
 
@@ -288,7 +292,7 @@ pub struct FlightsViewModel<UC> {
 impl<UC: SearchFlightsPort> FlightsViewModel<UC> {
     pub fn state(&self) -> &FlightsState { &self.state }
 
-    #[ui_export(writes = "state")]
+    #[async_action]  // writes to #[state] value inferred automatically
     pub async fn load(&mut self, query: String) {
         self.state = FlightsState::Loading;
         match self.search.execute(&query).await {

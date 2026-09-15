@@ -1,0 +1,59 @@
+// Flights — async @provider pattern (like Riverpod AsyncNotifier)
+// Rust impl: crates/presentation/src/flights.rs
+
+use presentation::Flights
+
+screen Flights(query: String) {
+    @inject flights: Flights
+
+    onLoad { await flights.load(query) }
+
+    // @listen — side effect on error (like ref.listen)
+    @listen(flights.value) { state in
+        if state is Error { haptic_heavy() }
+    }
+
+    match flights.value {
+        Loading -> Column {
+            Loading()
+            Text("Searching flights...").color(.muted)
+        }
+
+        Empty -> Column {
+            Text("No flights found")
+            Button("Try again") { await flights.load(query) }
+        }
+
+        Error(msg) -> Column {
+            Text(msg).color(.error)
+            Button("Retry") { await flights.load(query) }
+        }
+
+        Data(rows) -> List(rows) key: row.id { row in
+            FlightCard(
+                airline: row.airline,
+                from: row.from,
+                to: row.to,
+                fare: row.fare
+            )
+            .on_tap { navigate("detail", { id: row.id }) }
+        }
+    }
+    .padding(16)
+    .safe_area()
+}
+
+component FlightCard(airline: String, from: String, to: String, fare: Float) {
+    Row {
+        Column {
+            Text(airline).font(weight: .semibold)
+            Text("${from} → ${to}").color(.muted).font_size(14)
+        }
+        .flex(1)
+        Text("$${fare}").font(weight: .bold).color(.accent)
+    }
+    .padding(16)
+    .background(.surface)
+    .border_radius(12)
+    .margin(bottom: 8)
+}

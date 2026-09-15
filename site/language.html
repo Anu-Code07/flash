@@ -67,12 +67,26 @@
     <span class="fn">Column</span> { ... }
 }</code></pre>
 
-      <h2 id="state">State</h2>
-      <p>Screen-local state lives on the screen. Components are stateless in v1.</p>
-      <pre><code><span class="kw">state</span> count: <span class="type">Int</span> = <span class="num">0</span>
-<span class="kw">state</span> loading: <span class="type">Bool</span> = <span class="num">true</span>
-<span class="kw">state</span> items: <span class="type">List</span>&lt;<span class="type">Item</span>&gt; = []</code></pre>
-      <p>State mutations in handlers: <code>count++</code>, <code>count += 1</code>, <code>loading = false</code></p>
+      <h2 id="state">State — <code>@provider</code></h2>
+      <p>Riverpod-style providers with compile-time dependency tracking. No manual <code>writes</code> annotations.</p>
+      <pre><code><span class="attr">@provider</span> Counter {
+    <span class="attr">@state</span> count: <span class="type">Int</span> = <span class="num">0</span>
+    <span class="attr">@state</span> high_score: <span class="type">Int</span> = <span class="num">0</span>
+
+    <span class="attr">@action</span> increment() {
+        count++
+        if count > high_score { high_score = count }
+    }
+}
+
+<span class="kw">screen</span> Home {
+    <span class="attr">@inject</span> counter: Counter
+
+    <span class="fn">Text</span>(<span class="str">"${counter.count}"</span>)   <span class="cm">// auto-watch</span>
+    <span class="fn">Button</span>(<span class="str">"+"</span>) { counter.increment() }
+}</code></pre>
+      <p>Simple screen-local state still works: <code>state count: Int = 0</code> (sugar for <code>@provider(scope: Screen)</code>).</p>
+      <p>Full guide: <a href="../docs/state-management.md">State management docs</a></p>
 
       <h2 id="components">Components</h2>
       <pre><code><span class="kw">component</span> UserCard(name: <span class="type">String</span>, age: <span class="type">Int</span>) {

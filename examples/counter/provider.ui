@@ -1,0 +1,45 @@
+// Counter using @provider — Riverpod-style state, compile-time reactivity
+// Replaces manual state + writes annotations
+
+@provider Counter {
+    @state count: Int = 0
+    @state high_score: Int = 0
+
+    @action increment() {
+        count++
+        if count > high_score {
+            high_score = count
+        }
+    }
+
+    @action decrement() {
+        if count > 0 { count-- }
+    }
+
+    @action reset() {
+        count = 0
+    }
+}
+
+screen Home {
+    @inject counter: Counter
+
+    Column {
+        Text("Count: ${counter.count}")
+            .font(size: 32, weight: .bold)
+            .padding(24)
+
+        Text("Best: ${counter.high_score}")
+            .color(.accent)
+
+        Row {
+            Button("−") { counter.decrement() }
+            Button("+") {
+                counter.increment()
+                haptic_light()
+            }
+            Button("Reset") { counter.reset() }
+        }
+    }
+    .safe_area()
+}
