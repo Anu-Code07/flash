@@ -16,14 +16,31 @@ UILabel, UIButton, UIStackView
 
 `CADisplayLink` — one `commit()` per vsync.
 
-## Primitives (Phase 3)
+## Native renderer (Phase 3)
+
+Implementation: `platform/ios/FlashHost/FlashHost.swift`
+
+```swift
+// AppDelegate.swift
+FlashHost.shared.registerWithRust()
+```
+
+Rust calls `flash_host_apply_ops()` each frame with a batched command buffer.
+One FFI crossing per vsync — no per-property bridge calls.
+
+## Primitives (10 core widgets)
 
 | Flash | UIKit |
 |-------|-------|
 | Text | UILabel |
 | Button | UIButton |
-| Column / Row | UIStackView (MVP) → FlashLayoutView (Phase 5b) |
+| Column / Row | UIStackView |
+| Stack | UIView (z-order) |
+| Image | UIImageView |
+| TextField | UITextField |
+| ScrollView | UIScrollView |
 | List | UICollectionView |
+| Loading | UIActivityIndicatorView |
 
 ## Animation (Phase 5a)
 

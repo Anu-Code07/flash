@@ -8,13 +8,17 @@ batched native platform UI operations.
 
 ## Status
 
-Phase 1–2 complete: compiler pipeline + reactive runtime. Counter example compiles
-to IR and updates only the dependent `Text` node on `count++`.
+Phase 1–3 in progress: compiler pipeline + reactive runtime + native host bridge.
+Counter example compiles to IR, updates one native property on `count++`, and renders
+via UIKit (iOS) / Android Views through a batched command buffer.
 
 ```bash
 cargo run -p flash-cli -- ir examples/counter/home.ui
 cargo run -p flash-cli -- run examples/counter/home.ui
-cargo run -p flash-cli -- dev examples/counter/home.ui   # hot reload on save
+cargo run -p flash-cli -- run --native examples/counter/home.ui  # native command buffer
+cargo run -p flash-cli -- run ios examples/counter/home.ui       # UIKit path
+cargo run -p flash-cli -- dev examples/counter/home.ui           # hot reload on save
+cargo run -p flash-cli -- build ios                              # native build guide
 ```
 
 ## Language documentation site

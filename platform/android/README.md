@@ -16,14 +16,28 @@ TextView, MaterialButton, custom ViewGroup
 
 `Choreographer` — one `commit()` per vsync.
 
-## Primitives (Phase 4)
+## Native renderer (Phase 3)
+
+Implementation: `platform/android/flash-host/src/main/kotlin/com/flash/FlashHost.kt`
+
+```kotlin
+FlashHost.init(applicationContext)
+// Rust .so calls FlashHost.applyOps(bytes) each frame
+```
+
+## Primitives (10 core widgets)
 
 | Flash | Android |
 |-------|---------|
 | Text | TextView |
-| Button | MaterialButton |
-| Column / Row | FlashFlexLayout (Phase 5b; avoids double-measure) |
+| Button | Button (Material) |
+| Column / Row | LinearLayout |
+| Stack | FrameLayout |
+| Image | ImageView |
+| TextField | EditText |
+| ScrollView | ScrollView |
 | List | RecyclerView |
+| Loading | ProgressBar |
 
 ## Animation (Phase 5a)
 

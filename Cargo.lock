@@ -100,5 +100,6 @@ version = "0.1.0"
 dependencies = [
  "flash-driver",
  "flash-ir",
+ "flash-platform",
  "flash-runtime",
 ]

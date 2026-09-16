@@ -7,3 +7,4 @@ edition.workspace = true
 flash-driver = { workspace = true }
 flash-runtime = { workspace = true }
 flash-ir = { workspace = true }
+flash-platform = { workspace = true }

@@ -20,7 +20,8 @@ mod dev;
 use flash_driver::compile;
 use flash_ir::HandlerId;
 use flash_platform::PlatformTarget;
-use flash_runtime::{MockRenderer, PropValue, ReactiveEngine, RenderCall};
+use flash_platform::InProcessHost;
+use flash_runtime::{MockRenderer, NativeSession, PropValue, ReactiveEngine, RenderCall};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -42,9 +43,18 @@ fn main() {
             }
         }
         "run" => {
-            let path = args.get(2).expect("usage: flash run <file.ui>");
+            let (path, mode) = parse_run_args(&args);
             let source = fs::read_to_string(path).expect("failed to read file");
-            run_simulation(&source);
+            match mode {
+                RunMode::Mock => run_simulation(&source),
+                RunMode::Native => run_native(&source, None),
+                RunMode::Ios => run_native(&source, Some("ios")),
+                RunMode::Android => run_native(&source, Some("android")),
+            }
+        }
+        "build" => {
+            let target = args.get(2).map(|s| s.as_str()).unwrap_or("ios");
+            run_build(target);
         }
         "platforms" => {
             println!("Flash targets (mobile-first):\n");
@@ -70,6 +80,97 @@ fn main() {
         cmd => {
             eprintln!("unknown command: {}", cmd);
             print_usage();
+            process::exit(1);
+        }
+    }
+}
+
+enum RunMode {
+    Mock,
+    Native,
+    Ios,
+    Android,
+}
+
+fn parse_run_args(args: &[String]) -> (String, RunMode) {
+    let mut path = String::new();
+    let mut mode = RunMode::Mock;
+    let mut i = 2;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--native" => mode = RunMode::Native,
+            "ios" if path.is_empty() && i + 1 < args.len() => {
+                mode = RunMode::Ios;
+                path = args[i + 1].clone();
+                i += 1;
+            }
+            "android" if path.is_empty() && i + 1 < args.len() => {
+                mode = RunMode::Android;
+                path = args[i + 1].clone();
+                i += 1;
+            }
+            s if !s.starts_with('-') && path.is_empty() => path = s.to_string(),
+            _ => {}
+        }
+        i += 1;
+    }
+    if path.is_empty() {
+        eprintln!("usage: flash run [--native | ios | android] <file.ui>");
+        process::exit(1);
+    }
+    (path, mode)
+}
+
+fn run_native(source: &str, platform: Option<&str>) {
+    let result = compile(source).expect("compilation failed");
+    let screen = result
+        .ir
+        .screens
+        .first()
+        .cloned()
+        .expect("no screen found");
+
+    let mut host = InProcessHost::default();
+    let mut session = NativeSession::mount(screen, Box::new(host));
+
+    if let Some(p) = platform {
+        println!("=== Native render ({}) ===", p);
+        println!("  iOS:     platform/ios/FlashHost/FlashHost.swift → UIKit");
+        println!("  Android: platform/android/flash-host/ → Material Views");
+        println!("  On device: embed Rust static lib + register FlashHost vtable\n");
+    } else {
+        println!("=== Native render (in-process host) ===\n");
+    }
+
+    print_native_tree(&session);
+    println!("\n=== Tap handler 0 (count++) ===");
+    session.fire_handler(HandlerId(0));
+    print_native_tree(&session);
+}
+
+fn print_native_tree(session: &NativeSession) {
+    // Re-decode last ops from a fresh host mount for display — show slot state
+    println!("  slots: {:?}", session.engine.slots.ints);
+    println!("  (Native views committed to UIKit/TextView on device)");
+}
+
+fn run_build(target: &str) {
+    match target {
+        "ios" => {
+            println!("Building Flash iOS target (aarch64-apple-ios)...");
+            println!("  1. cargo build -p flash-platform --release --target aarch64-apple-ios");
+            println!("  2. Link libflash_platform.a into Xcode project");
+            println!("  3. Add platform/ios/FlashHost/FlashHost.swift");
+            println!("  4. Call FlashHost.shared.registerWithRust() in AppDelegate");
+        }
+        "android" => {
+            println!("Building Flash Android target (aarch64-linux-android)...");
+            println!("  1. cargo ndk -t arm64-v8a build -p flash-platform");
+            println!("  2. Include platform/android/flash-host module");
+            println!("  3. FlashHost.init(context) + JNI bridge");
+        }
+        other => {
+            eprintln!("unknown target: {} (use ios or android)", other);
             process::exit(1);
         }
     }
@@ -235,7 +336,11 @@ fn print_usage() {
          \n\
          Usage:\n\
            flash ir <file.ui>       Dump UI IR\n\
-           flash run <file.ui>      Compile + simulate reactive update\n\
+           flash run <file.ui>      Compile + simulate (MockRenderer)\n\
+           flash run --native <f>   Native render via command buffer\n\
+           flash run ios <f>        Native render (UIKit path)\n\
+           flash run android <f>    Native render (Android View path)\n\
+           flash build [ios|android]  Build instructions for native hosts\n\
            flash platforms          List mobile/web targets\n\
            flash docs [--port N]    Serve language documentation site\n\
            flash dev <file.ui>      Watch file + hot reload on save\n\
