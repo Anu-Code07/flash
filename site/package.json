@@ -1,0 +1,14 @@
+{
+  "name": "flash-docs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Flash UI framework documentation site (static)",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "npx --yes serve . -p 3000",
+    "preview": "npm run dev"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

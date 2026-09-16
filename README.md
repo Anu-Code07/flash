@@ -12,14 +12,36 @@ Phase 1–3 in progress: compiler pipeline + reactive runtime + native host brid
 Counter example compiles to IR, updates one native property on `count++`, and renders
 via UIKit (iOS) / Android Views through a batched command buffer.
 
+### Install CLI
+
+`flash` is not published to crates.io yet. From the repo root:
+
+```bash
+./scripts/install-flash.sh          # installs `flash` to ~/.cargo/bin
+# ensure ~/.cargo/bin is on your PATH
+flash create MyApp all
+```
+
+Without installing globally, use `cargo run -p flash-cli --` as a prefix.
+
+### Commands
+
 ```bash
 cargo run -p flash-cli -- ir examples/counter/home.ui
 cargo run -p flash-cli -- run examples/counter/home.ui
 cargo run -p flash-cli -- run --native examples/counter/home.ui  # native command buffer
 cargo run -p flash-cli -- run ios examples/counter/home.ui       # UIKit path
 cargo run -p flash-cli -- dev examples/counter/home.ui           # hot reload on save
+cargo run -p flash-cli -- dev --native examples/counter/home.ui  # native hot reload
+cargo run -p flash-cli -- create MyApp all                       # scaffold iOS + Android
 cargo run -p flash-cli -- build ios                              # native build guide
 ```
+
+### Deploy docs site (Vercel)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAnu-Code07%2Fflash&project-name=flash-docs&repository-name=flash)
+
+One-click: import the repo on Vercel — `vercel.json` is already configured (`outputDirectory: site`).
 
 ## Language documentation site
 

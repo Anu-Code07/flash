@@ -33,13 +33,31 @@
       <li>For Android: Android Studio, NDK r26+</li>
     </ul>
 
-    <h2>2. Clone and run the counter</h2>
+    <h2>2. Install the <code>flash</code> CLI</h2>
+    <p><code>flash</code> is not on crates.io yet — install from the repo:</p>
     <pre><code>git clone https://github.com/Anu-Code07/flash.git
 cd flash
-cargo run -p flash-cli -- run examples/counter/home.ui</code></pre>
+./scripts/install-flash.sh   <span class="cm"># installs to ~/.cargo/bin</span></code></pre>
+    <p>Ensure <code>~/.cargo/bin</code> is on your PATH (zsh):</p>
+    <pre><code>echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+flash help</code></pre>
+    <p>Without a global install, prefix every command:</p>
+    <pre><code>cargo run -p flash-cli -- create MyApp all
+cargo run -p flash-cli -- dev --native ui/home.ui</code></pre>
+
+    <h2>3. Clone and run the counter</h2>
+    <pre><code>cd flash
+flash run examples/counter/home.ui
+<span class="cm"># or: cargo run -p flash-cli -- run examples/counter/home.ui</span></code></pre>
     <p>Expected output: one <code>SetProp</code> + one <code>Commit</code> on tap — fine-grained reactivity confirmed.</p>
 
-    <h2>3. Create a screen</h2>
+    <h2>4. Scaffold a new app</h2>
+    <pre><code>flash create MyApp all
+cd MyApp
+flash dev --native ui/home.ui</code></pre>
+
+    <h2>5. Create a screen</h2>
     <pre><code><span class="cm">// app/screens/home.ui</span>
 <span class="kw">screen</span> Home {
     <span class="kw">state</span> count: <span class="type">Int</span> = <span class="num">0</span>
@@ -57,7 +75,7 @@ cargo run -p flash-cli -- run examples/counter/home.ui</code></pre>
     .<span class="fn">safe_area</span>()
 }</code></pre>
 
-    <h2>4. Add Rust business logic</h2>
+    <h2>6. Add Rust business logic</h2>
     <pre><code><span class="cm">// crates/app/src/vm.rs</span>
 <span class="attr">#[ui_export]</span>
 <span class="kw">pub struct</span> HomeViewModel {
@@ -72,7 +90,7 @@ cargo run -p flash-cli -- run examples/counter/home.ui</code></pre>
     }
 }</code></pre>
 
-    <h2>5. Build for mobile</h2>
+    <h2>7. Build for mobile</h2>
     <pre><code><span class="cm"># iOS</span>
 cargo run -p flash-cli -- build --target ios app/screens/home.ui
 
@@ -82,7 +100,7 @@ cargo run -p flash-cli -- build --target android app/screens/home.ui
 <span class="cm"># Web</span>
 cargo run -p flash-cli -- build --target web app/screens/home.ui</code></pre>
 
-    <h2>6. Browse the docs locally</h2>
+    <h2>8. Browse the docs locally</h2>
     <pre><code>cargo run -p flash-cli -- docs
 <span class="cm"># Open http://localhost:3000</span></code></pre>
 

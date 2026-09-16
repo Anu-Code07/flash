@@ -1,0 +1,14 @@
+target/
+**/target/
+.git/
+cli/
+compiler/
+runtime/
+platform/
+stl/
+tests/
+examples/
+docs/
+*.rs
+Cargo.lock
+Cargo.toml
