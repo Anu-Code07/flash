@@ -1,6 +1,7 @@
 //! Fine-grained reactive update engine.
 
 use flash_ir::{HandlerBody, HandlerId, IrExpr, PropKey, ScreenIr, UpdateOp};
+use crate::live_renderer::LiveRenderer;
 use crate::renderer::{MockRenderer, PropValue};
 use crate::state::SlotStore;
 
@@ -102,18 +103,61 @@ impl ReactiveEngine {
         for node in &self.screen.nodes {
             renderer.create(node.kind, flash_ir::NodeId(0));
         }
+        self.write_all_props_mock(renderer);
+        renderer.commit();
+    }
+
+    pub fn mount_live(&self, renderer: &mut LiveRenderer) {
+        for node in &self.screen.nodes {
+            renderer.create(node.kind, flash_ir::NodeId(0));
+        }
+        self.write_all_props_live(renderer);
+        renderer.commit();
+    }
+
+    /// Re-apply all props after hot reload (patches only changed values).
+    pub fn remount_props_live(&self, renderer: &mut LiveRenderer) {
+        self.write_all_props_live(renderer);
+        renderer.commit();
+    }
+
+    pub fn flush_live(&mut self, renderer: &mut LiveRenderer) {
+        let dirty = self.slots.drain_dirty();
+        for slot in dirty {
+            for &op_idx in self.screen.deps.ops_for(slot) {
+                let op = &self.screen.update_ops[op_idx as usize];
+                let value = self.eval_update_op(op);
+                renderer.set_prop(op.node, op.key, value);
+            }
+        }
+        renderer.commit();
+    }
+
+    fn write_all_props_mock(&self, renderer: &mut MockRenderer) {
         for prop in &self.screen.static_props {
-            let value = match &prop.value {
-                IrExpr::Str(s) => PropValue::Str(s.clone()),
-                IrExpr::Int(v) => PropValue::Str(v.to_string()),
-                _ => PropValue::Str(String::new()),
-            };
-            renderer.set_prop(prop.node, prop.key, value);
+            renderer.set_prop(prop.node, prop.key, static_prop_value(&prop.value));
         }
         for op in &self.screen.update_ops {
             let value = self.eval_update_op(op);
             renderer.set_prop(op.node, op.key, value);
         }
-        renderer.commit();
+    }
+
+    fn write_all_props_live(&self, renderer: &mut LiveRenderer) {
+        for prop in &self.screen.static_props {
+            renderer.set_prop(prop.node, prop.key, static_prop_value(&prop.value));
+        }
+        for op in &self.screen.update_ops {
+            let value = self.eval_update_op(op);
+            renderer.set_prop(op.node, op.key, value);
+        }
+    }
+}
+
+fn static_prop_value(expr: &IrExpr) -> PropValue {
+    match expr {
+        IrExpr::Str(s) => PropValue::Str(s.clone()),
+        IrExpr::Int(v) => PropValue::Str(v.to_string()),
+        _ => PropValue::Str(String::new()),
     }
 }

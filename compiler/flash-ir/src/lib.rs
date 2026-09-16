@@ -2,6 +2,7 @@
 
 pub mod animation;
 pub mod layout;
+pub mod hot_reload;
 
 use flash_span::Symbol;
 use flash_stl::types::TypeKind;
@@ -142,7 +143,7 @@ pub struct NodeIr {
     pub handler: Option<HandlerId>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PropKey {
     Text,
     Title,

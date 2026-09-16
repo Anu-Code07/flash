@@ -14,6 +14,7 @@ to IR and updates only the dependent `Text` node on `count++`.
 ```bash
 cargo run -p flash-cli -- ir examples/counter/home.ui
 cargo run -p flash-cli -- run examples/counter/home.ui
+cargo run -p flash-cli -- dev examples/counter/home.ui   # hot reload on save
 ```
 
 ## Language documentation site

@@ -15,6 +15,8 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::thread;
 
+mod dev;
+
 use flash_driver::compile;
 use flash_ir::HandlerId;
 use flash_platform::PlatformTarget;
@@ -59,6 +61,10 @@ fn main() {
         "docs" => {
             let port = parse_port_flag(&args).unwrap_or(3000);
             serve_docs(port);
+        }
+        "dev" => {
+            let path = args.get(2).expect("usage: flash dev <file.ui>");
+            dev::run_dev(Path::new(path));
         }
         "help" | "--help" | "-h" => print_usage(),
         cmd => {
@@ -232,6 +238,7 @@ fn print_usage() {
            flash run <file.ui>      Compile + simulate reactive update\n\
            flash platforms          List mobile/web targets\n\
            flash docs [--port N]    Serve language documentation site\n\
+           flash dev <file.ui>      Watch file + hot reload on save\n\
            flash help               Show this help"
     );
 }

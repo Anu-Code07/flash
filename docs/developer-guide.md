@@ -429,7 +429,7 @@ flash run android
 | `match` on Rust enums | 🔜 Phase 5 |
 | `List` with keyed reconciliation | 🔜 Phase 5c |
 | HTTP via platform port | 🔜 Phase 5 |
-| `flash dev` hot reload | 🔜 Phase 6 |
+| `flash dev` hot reload | ✅ `.ui` edits patch props; state preserved; structure changes trigger hot restart |
 | iOS/Android native hosts | 🔜 Phase 3–4 |
 
 **Today** you can build the simple counter entirely in `.ui`.
