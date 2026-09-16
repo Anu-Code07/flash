@@ -1,4 +1,4 @@
-//! `flash doctor` — verify toolchain like `flutter doctor`.
+//! `flash doctor` — verify toolchain and project setup.
 
 use std::env;
 use std::path::Path;
@@ -38,8 +38,12 @@ pub fn run_doctor() {
     if failures == 0 {
         ui::success("No issues found!");
         println!();
-        ui::dim("  flash create my_app");
-        ui::dim("  cd my_app && flash run");
+        ui::step("Your dev workflow:");
+        println!("    {}  New app", ui::cmd("flash create my_app"));
+        println!("    {}  Hot reload", ui::cmd("cd my_app && flash run"));
+        println!("    {}  Targets", ui::cmd("flash devices"));
+        println!("    {}  Update SDK", ui::cmd("flash upgrade"));
+        println!();
     } else {
         ui::warn(&format!("{} issue(s) found.", failures));
         std::process::exit(1);

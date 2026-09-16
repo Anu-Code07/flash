@@ -1,20 +1,42 @@
-//! Terminal UI — Flutter-style CLI output (colors, banners, steps).
+//! Terminal UI — colors, banners, and step output for the CLI.
 
-use std::io::{self, Write};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn welcome() {
     banner();
     println!();
-    dim("  Get started:");
-    println!("    {}  Create a new app", cmd("flash create my_app"));
-    println!("    {}  Check your setup", cmd("flash doctor"));
-    println!("    {}  View documentation", cmd("flash docs"));
+    if sdk_installed() {
+        success("SDK installed");
+        dim(&format!("  FLASH_SDK={}", sdk_path()));
+        println!();
+        dim("  Get started:");
+        println!("    {}  Create a new app", cmd("flash create my_app"));
+        println!("    {}  Hot reload", cmd("cd my_app && flash run"));
+        println!("    {}  List devices", cmd("flash devices"));
+        println!("    {}  Update SDK", cmd("flash upgrade"));
+    } else {
+        dim("  Install Flash (one command):");
+        println!("    curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash");
+        println!();
+        dim("  Then:");
+        println!("    {}  Verify setup", cmd("flash doctor"));
+        println!("    {}  Create app", cmd("flash create my_app"));
+    }
     println!();
-    dim("  Install SDK:");
-    println!("    curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash");
+    dim("  Docs: flash docs  ·  https://github.com/Anu-Code07/flash");
     println!();
+}
+
+fn sdk_installed() -> bool {
+    std::path::Path::new(&sdk_path()).join("cli/Cargo.toml").is_file()
+}
+
+fn sdk_path() -> String {
+    std::env::var("FLASH_SDK").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_default();
+        format!("{}/.flash/sdk", home)
+    })
 }
 
 pub fn project_welcome(name: &str, entry: &str) {
@@ -104,10 +126,6 @@ pub fn dim(msg: &str) {
 
 pub fn cmd(s: &str) -> String {
     format!("{}{}{}", BOLD, s, RESET)
-}
-
-pub fn flush() {
-    io::stdout().flush().ok();
 }
 
 const BOLD: &str = "\x1b[1m";

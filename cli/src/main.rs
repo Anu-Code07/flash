@@ -1,4 +1,4 @@
-//! Flash CLI — Flutter-style developer experience.
+//! Flash CLI — install, create, run, hot reload.
 
 use std::env;
 use std::fs;
@@ -14,6 +14,7 @@ mod devices;
 mod doctor;
 mod project;
 mod ui;
+mod upgrade;
 
 use flash_driver::compile;
 use flash_ir::HandlerId;
@@ -42,6 +43,7 @@ fn main() {
         "platforms" => cmd_platforms(),
         "docs" => serve_docs(parse_port_flag(&args).unwrap_or(3000)),
         "doctor" | "setup" => doctor::run_doctor(),
+        "upgrade" => upgrade::run_upgrade(),
         "create" => {
             let name = args.get(2).expect("usage: flash create <name> [ios|android|all]");
             let target = args.get(3).map(|s| s.as_str()).unwrap_or("all");
@@ -64,7 +66,7 @@ fn show_dashboard() {
     }
 }
 
-/// `flash run` — hot reload by default (like `flutter run`).
+/// `flash run` — hot reload by default.
 fn cmd_run(args: &[String]) {
     let opts = parse_run_opts(args);
     if opts.once {
@@ -381,7 +383,8 @@ fn print_usage() {
          Usage:\n\
            flash                    Project dashboard or welcome\n\
            flash create <name>      New app (clean architecture)\n\
-           flash run                Hot reload (default, like flutter run)\n\
+           flash run                Hot reload dev server (default)\n\
+           flash upgrade            Update SDK + CLI\n\
            flash run -d native      Native command-buffer hot reload\n\
            flash run --once         One-shot simulate\n\
            flash devices            List run targets\n\

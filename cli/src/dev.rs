@@ -1,4 +1,4 @@
-//! `flash dev` / `flash run` — hot reload like `flutter run`.
+//! `flash dev` / `flash run` — hot reload on save.
 
 use std::fs;
 use std::io::{self, Write};

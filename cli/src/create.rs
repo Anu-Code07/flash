@@ -1,4 +1,4 @@
-//! `flash create` — clean-architecture app scaffold (Flutter-style).
+//! `flash create` — clean-architecture app scaffold.
 
 use std::fs;
 use std::path::Path;
@@ -147,7 +147,7 @@ Flash app — clean architecture layout.
 ## Quick start
 
 ```bash
-flash run              # hot reload (like flutter run)
+flash run              # hot reload on save
 flash run -d native    # native hot reload
 flash doctor           # check toolchain
 ./scripts/build-rust.sh   # build native libs for device

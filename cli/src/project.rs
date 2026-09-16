@@ -1,4 +1,4 @@
-//! Flash project — reads `flash.toml` like Flutter reads `pubspec.yaml`.
+//! Flash project — reads `flash.toml` for app name, entry screen, and paths.
 
 use std::env;
 use std::fs;

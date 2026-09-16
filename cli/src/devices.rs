@@ -1,4 +1,4 @@
-//! `flash devices` — list run targets (like `flutter devices`).
+//! `flash devices` — list available run targets.
 
 use std::env;
 use std::process::Command;

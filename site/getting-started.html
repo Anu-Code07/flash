@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started — Flash</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="logo">⚡ <span>Flash</span></a>
+      <ul class="nav-links">
+        <li><a href="getting-started.html" class="active">Getting Started</a></li>
+        <li><a href="language.html">Language</a></li>
+        <li><a href="quickstart.html">Quickstart</a></li>
+        <li><a href="mobile.html">Mobile</a></li>
+        <li><a href="https://github.com/Anu-Code07/flash">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero" style="padding:3rem 1.5rem 2rem;">
+    <h1>Getting Started</h1>
+    <p>Install to hot reload in under 2 minutes.</p>
+  </section>
+
+  <div class="container content">
+    <h2>1. Install</h2>
+    <p>One command installs Rust (if needed), the Flash SDK, and the <code>flash</code> CLI:</p>
+    <pre><code>curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash
+source ~/.zshrc</code></pre>
+    <p>Auto-create a demo app during install:</p>
+    <pre><code>FLASH_QUICKSTART=1 curl -fsSL .../install.sh | bash</code></pre>
+
+    <h2>2. Verify</h2>
+    <pre><code>flash doctor</code></pre>
+    <p>Checks Rust, CLI, SDK path, and optional iOS/Android tooling.</p>
+
+    <h2>3. Create an app</h2>
+    <pre><code>flash create my_app
+cd my_app</code></pre>
+    <p>Scaffolds clean architecture:</p>
+    <pre><code>my_app/
+├── ui/screens/           # .ui files
+├── crates/
+│   ├── presentation/     # view models
+│   ├── application/      # use cases
+│   └── infrastructure/   # HTTP, storage
+├── platform/
+│   ├── ios/              # Xcode
+│   └── android/          # Gradle
+└── flash.toml</code></pre>
+
+    <h2>4. Run with hot reload</h2>
+    <pre><code>flash run</code></pre>
+    <p>Reads <code>flash.toml</code> — edit <code>ui/screens/home.ui</code> and save. Changes apply in &lt;1s.</p>
+
+    <h2>5. Choose a device</h2>
+    <pre><code>flash devices
+flash run -d simulator   # default preview
+flash run -d native      # native command buffer
+flash run -d ios         # UIKit (macOS + Xcode)
+flash run -d android     # Android Views</code></pre>
+
+    <h2>Command cheat sheet</h2>
+    <table>
+      <tr><th>Command</th><th>What it does</th></tr>
+      <tr><td><code>flash doctor</code></td><td>Check toolchain and SDK</td></tr>
+      <tr><td><code>flash create</code></td><td>Scaffold a new project</td></tr>
+      <tr><td><code>flash run</code></td><td>Hot reload dev server</td></tr>
+      <tr><td><code>flash devices</code></td><td>List run targets</td></tr>
+      <tr><td><code>flash pub get</code></td><td>Fetch Rust workspace deps</td></tr>
+      <tr><td><code>flash upgrade</code></td><td>Update SDK + CLI</td></tr>
+      <tr><td><code>flash build ios</code></td><td>Native iOS build guide</td></tr>
+    </table>
+
+    <h2>Update later</h2>
+    <pre><code>flash upgrade</code></pre>
+
+    <h2>Troubleshooting</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>command not found: flash</h3>
+        <p>Run <code>source ~/.zshrc</code> or reinstall with the curl command above.</p>
+      </div>
+      <div class="card">
+        <h3>SDK not found</h3>
+        <p>Ensure <code>FLASH_SDK</code> points to <code>~/.flash/sdk</code>. Run <code>flash doctor</code>.</p>
+      </div>
+      <div class="card">
+        <h3>From git clone</h3>
+        <p><code>./scripts/install-flash.sh</code> or <code>cargo install --path cli --force</code></p>
+      </div>
+    </div>
+  </div>
+
+  <footer><p>Flash — Getting Started</p></footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

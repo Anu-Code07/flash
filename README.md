@@ -12,7 +12,7 @@ Phase 1–3 in progress: compiler pipeline + reactive runtime + native host brid
 Counter example compiles to IR, updates one native property on `count++`, and renders
 via UIKit (iOS) / Android Views through a batched command buffer.
 
-### Install (Flutter/RN-style — one command)
+### Install (one command)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash
