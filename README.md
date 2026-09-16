@@ -12,17 +12,21 @@ Phase 1–3 in progress: compiler pipeline + reactive runtime + native host brid
 Counter example compiles to IR, updates one native property on `count++`, and renders
 via UIKit (iOS) / Android Views through a batched command buffer.
 
-### Install CLI
-
-`flash` is not published to crates.io yet. From the repo root:
+### Install (Flutter/RN-style — one command)
 
 ```bash
-./scripts/install-flash.sh          # installs `flash` to ~/.cargo/bin
-# ensure ~/.cargo/bin is on your PATH
-flash create MyApp all
+curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash
+source ~/.zshrc
+flash doctor
+flash create my_app
+cd my_app && flash dev
 ```
 
-Without installing globally, use `cargo run -p flash-cli --` as a prefix.
+Installs Rust (if needed), clones SDK to `~/.flash/sdk`, puts `flash` on PATH.
+
+From a git clone: `./scripts/install-flash.sh` or `cargo install --path cli --force`
+
+Without a global install: `cargo run -p flash-cli -- create my_app`
 
 ### Commands
 

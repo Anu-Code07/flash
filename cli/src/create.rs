@@ -1,4 +1,4 @@
-//! `flash create` — scaffold iOS/Android app linking Rust static lib.
+//! `flash create` — clean-architecture app scaffold (Flutter/RN-style).
 
 use std::fs;
 use std::path::Path;
@@ -10,12 +10,7 @@ pub fn run_create(name: &str, target: &str) {
         std::process::exit(1);
     }
 
-    fs::create_dir_all(dir.join("ui")).expect("create ui dir");
-    fs::create_dir_all(dir.join("scripts")).expect("create scripts dir");
-
-    write_file(dir, "flash.toml", FLASH_TOML);
-    write_file(dir, "ui/home.ui", HOME_UI);
-    write_file(dir, "scripts/build-rust.sh", BUILD_RUST_SH);
+    scaffold_clean_arch(dir, name);
 
     match target {
         "ios" => scaffold_ios(dir),
@@ -30,52 +25,157 @@ pub fn run_create(name: &str, target: &str) {
         }
     }
 
-    println!("Created Flash app '{}'", name);
-    println!("  ui/home.ui       — edit your UI");
-    println!("  flash.toml       — project config");
-    println!("  scripts/build-rust.sh — build static lib for device/simulator");
-    if target == "ios" || target == "all" {
-        println!("  ios/             — open FlashApp.xcodeproj in Xcode");
-    }
-    if target == "android" || target == "all" {
-        println!("  android/         — open in Android Studio");
-    }
-    println!("\nNext:");
-    println!("  cd {} && flash dev ui/home.ui", name);
-    println!("  cd {} && flash dev --native ui/home.ui", name);
+    print_success(name, target);
+}
+
+fn scaffold_clean_arch(dir: &Path, name: &str) {
+    fs::create_dir_all(dir.join("ui/screens")).expect("ui/screens");
+    fs::create_dir_all(dir.join("scripts")).expect("scripts");
+    fs::create_dir_all(dir.join("crates/presentation/src")).expect("presentation");
+    fs::create_dir_all(dir.join("crates/application/src")).expect("application");
+    fs::create_dir_all(dir.join("crates/infrastructure/src")).expect("infrastructure");
+
+    write_file(dir, "flash.toml", &flash_toml(name));
+    write_file(dir, "Cargo.toml", WORKSPACE_CARGO);
+    write_file(dir, "ui/screens/home.ui", HOME_UI);
+    write_file(dir, "scripts/build-rust.sh", BUILD_RUST_SH);
+    write_file(dir, "README.md", &project_readme(name));
+
+    write_file(dir, "crates/presentation/Cargo.toml", PRESENTATION_CARGO);
+    write_file(dir, "crates/presentation/src/lib.rs", PRESENTATION_RS);
+    write_file(dir, "crates/application/Cargo.toml", APPLICATION_CARGO);
+    write_file(dir, "crates/application/src/lib.rs", APPLICATION_RS);
+    write_file(dir, "crates/infrastructure/Cargo.toml", INFRASTRUCTURE_CARGO);
+    write_file(dir, "crates/infrastructure/src/lib.rs", INFRASTRUCTURE_RS);
 }
 
 fn scaffold_ios(dir: &Path) {
-    fs::create_dir_all(dir.join("ios/FlashApp")).expect("create ios dir");
-    fs::create_dir_all(dir.join("ios/FlashHost")).expect("create FlashHost dir");
+    let ios = dir.join("platform/ios");
+    fs::create_dir_all(ios.join("FlashApp")).expect("ios FlashApp");
+    fs::create_dir_all(ios.join("FlashHost")).expect("ios FlashHost");
 
-    write_file(dir, "ios/FlashApp/AppDelegate.swift", IOS_APP_DELEGATE);
-    write_file(dir, "ios/FlashApp/SceneDelegate.swift", IOS_SCENE_DELEGATE);
-    write_file(dir, "ios/FlashApp/Info.plist", IOS_INFO_PLIST);
-    write_file(dir, "ios/FlashHost/FlashHost.swift", IOS_FLASH_HOST);
-    write_file(dir, "ios/FlashApp.xcodeproj/project.pbxproj", IOS_PBXPROJ);
-    write_file(dir, "ios/README.md", IOS_README);
+    write_file(dir, "platform/ios/FlashApp/AppDelegate.swift", IOS_APP_DELEGATE);
+    write_file(dir, "platform/ios/FlashApp/SceneDelegate.swift", IOS_SCENE_DELEGATE);
+    write_file(dir, "platform/ios/FlashApp/Info.plist", IOS_INFO_PLIST);
+    write_file(dir, "platform/ios/FlashHost/FlashHost.swift", IOS_FLASH_HOST);
+    write_file(dir, "platform/ios/FlashApp.xcodeproj/project.pbxproj", IOS_PBXPROJ);
+    write_file(dir, "platform/ios/README.md", IOS_README);
 }
 
 fn scaffold_android(dir: &Path) {
-    fs::create_dir_all(dir.join("android/app/src/main/java/com/flash/app")).expect("android app");
-    fs::create_dir_all(dir.join("android/flash-host/src/main/kotlin/com/flash")).expect("flash-host");
+    let android = "platform/android";
+    fs::create_dir_all(dir.join(format!("{}/app/src/main/java/com/flash/app", android)))
+        .expect("android app");
+    fs::create_dir_all(dir.join(format!("{}/flash-host/src/main/kotlin/com/flash", android)))
+        .expect("flash-host");
 
-    write_file(dir, "android/settings.gradle.kts", ANDROID_SETTINGS);
-    write_file(dir, "android/build.gradle.kts", ANDROID_ROOT_BUILD);
-    write_file(dir, "android/app/build.gradle.kts", ANDROID_APP_BUILD);
-    write_file(dir, "android/app/src/main/AndroidManifest.xml", ANDROID_MANIFEST);
+    write_file(dir, &format!("{}/settings.gradle.kts", android), ANDROID_SETTINGS);
+    write_file(dir, &format!("{}/build.gradle.kts", android), ANDROID_ROOT_BUILD);
+    write_file(dir, &format!("{}/app/build.gradle.kts", android), ANDROID_APP_BUILD);
+    write_file(dir, &format!("{}/app/src/main/AndroidManifest.xml", android), ANDROID_MANIFEST);
     write_file(
         dir,
-        "android/app/src/main/java/com/flash/app/MainActivity.kt",
+        &format!("{}/app/src/main/java/com/flash/app/MainActivity.kt", android),
         ANDROID_MAIN_ACTIVITY,
     );
     write_file(
         dir,
-        "android/flash-host/src/main/kotlin/com/flash/FlashHost.kt",
+        &format!("{}/flash-host/src/main/kotlin/com/flash/FlashHost.kt", android),
         ANDROID_FLASH_HOST,
     );
-    write_file(dir, "android/README.md", ANDROID_README);
+    write_file(dir, &format!("{}/README.md", android), ANDROID_README);
+}
+
+fn print_success(name: &str, target: &str) {
+    println!();
+    println!("⚡ Created Flash app '{}'", name);
+    println!();
+    println!("  {}/", name);
+    println!("  ├── ui/screens/          # .ui screens");
+    println!("  ├── crates/");
+    println!("  │   ├── presentation/    # view models → .ui");
+    println!("  │   ├── application/     # use cases");
+    println!("  │   └── infrastructure/  # HTTP, storage");
+    println!("  ├── platform/");
+    match target {
+        "ios" => println!("  │   └── ios/             # Xcode project"),
+        "android" => println!("  │   └── android/         # Gradle project"),
+        _ => {
+            println!("  │   ├── ios/             # Xcode project");
+            println!("  │   └── android/         # Gradle project");
+        }
+    }
+    println!("  ├── flash.toml");
+    println!("  └── scripts/build-rust.sh");
+    println!();
+    println!("Next:");
+    println!("  cd {}", name);
+    println!("  flash dev              # hot reload (reads flash.toml)");
+    println!("  flash dev --native     # native hot reload");
+    println!("  flash doctor           # verify toolchain");
+}
+
+fn flash_toml(name: &str) -> String {
+    format!(
+        r#"# Flash app manifest — https://github.com/Anu-Code07/flash
+
+[app]
+name = "{name}"
+entry = "ui/screens/home.ui"
+
+[sdk]
+# Set by `install.sh` — path to Flash SDK clone
+path = "${{FLASH_SDK}}"
+
+[targets.ios]
+triple = "aarch64-apple-ios"
+static_lib = "platform/ios/build/libflash_runtime.a"
+
+[targets.android]
+triple = "aarch64-linux-android"
+shared_lib = "platform/android/app/src/main/jniLibs/arm64-v8a/libflash_runtime.so"
+
+[crates]
+presentation = "crates/presentation"
+application = "crates/application"
+infrastructure = "crates/infrastructure"
+"#,
+        name = name
+    )
+}
+
+fn project_readme(name: &str) -> String {
+    format!(
+        r#"# {name}
+
+Flash app — clean architecture layout.
+
+## Quick start
+
+```bash
+flash dev              # hot reload (uses flash.toml entry)
+flash dev --native     # native command-buffer hot reload
+flash doctor           # check toolchain
+./scripts/build-rust.sh   # build native libs for device
+```
+
+## Structure
+
+```
+{name}/
+├── ui/screens/           # declarative .ui files
+├── crates/
+│   ├── presentation/     # view models → .ui
+│   ├── application/      # use cases
+│   └── infrastructure/   # HTTP, storage
+├── platform/
+│   ├── ios/              # Xcode project
+│   └── android/          # Gradle project
+└── flash.toml
+```
+"#,
+        name = name
+    )
 }
 
 fn write_file(dir: &Path, rel: &str, content: &str) {
@@ -86,24 +186,90 @@ fn write_file(dir: &Path, rel: &str, content: &str) {
     fs::write(path, content).expect("write template file");
 }
 
-const FLASH_TOML: &str = r#"[app]
-name = "MyFlashApp"
-entry = "ui/home.ui"
-
-[targets.ios]
-triple = "aarch64-apple-ios"
-static_lib = "ios/build/libflash_runtime.a"
-
-[targets.android]
-triple = "aarch64-linux-android"
-shared_lib = "android/app/src/main/jniLibs/arm64-v8a/libflash_runtime.so"
+const WORKSPACE_CARGO: &str = r#"[workspace]
+resolver = "2"
+members = [
+    "crates/presentation",
+    "crates/application",
+    "crates/infrastructure",
+]
 "#;
 
-const HOME_UI: &str = r#"screen Counter {
+const PRESENTATION_CARGO: &str = r#"[package]
+name = "presentation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+application = { path = "../application" }
+"#;
+
+const PRESENTATION_RS: &str = r#"//! Presentation layer — view models wired to `.ui` screens.
+//!
+//! Use `#[ui_export]` when the compiler supports full binding (coming soon).
+
+use application::IncrementCount;
+
+/// Counter screen state — mirrors `ui/screens/home.ui`.
+pub struct CounterViewModel {
+    pub count: i64,
+}
+
+impl CounterViewModel {
+    pub fn new() -> Self {
+        Self { count: 0 }
+    }
+
+    pub fn increment(&mut self) {
+        self.count = IncrementCount::run(self.count);
+    }
+}
+"#;
+
+const APPLICATION_CARGO: &str = r#"[package]
+name = "application"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+infrastructure = { path = "../infrastructure" }
+"#;
+
+const APPLICATION_RS: &str = r#"//! Application layer — use cases (no UI, no platform APIs).
+
+/// Increment counter use case.
+pub struct IncrementCount;
+
+impl IncrementCount {
+    pub fn run(current: i64) -> i64 {
+        current + 1
+    }
+}
+"#;
+
+const INFRASTRUCTURE_CARGO: &str = r#"[package]
+name = "infrastructure"
+version = "0.1.0"
+edition = "2021"
+"#;
+
+const INFRASTRUCTURE_RS: &str = r#"//! Infrastructure layer — HTTP, storage, platform bridges.
+
+/// Placeholder HTTP client — replace with reqwest or ureq.
+pub struct HttpClient;
+
+impl HttpClient {
+    pub fn new() -> Self {
+        Self
+    }
+}
+"#;
+
+const HOME_UI: &str = r#"screen Home {
   @state count: int = 0
 
   Column {
-    Text(text: "{count}")
+    Text(text: "Count: {count}")
     Button(title: "Increment") {
       count++
     }
@@ -115,22 +281,33 @@ const BUILD_RUST_SH: &str = r#"#!/usr/bin/env bash
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FLASH_SDK="${FLASH_SDK:-$HOME/.flash/sdk}"
+
+if [[ ! -d "$FLASH_SDK/cli" ]]; then
+  echo "Flash SDK not found at $FLASH_SDK"
+  echo "Run: curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash"
+  exit 1
+fi
+
+echo "Building app Rust crates..."
 cd "$ROOT"
+cargo build --workspace --release
 
-echo "Building flash-runtime for iOS..."
-rustup target add aarch64-apple-ios-sim aarch64-apple-ios 2>/dev/null || true
-cargo build -p flash-runtime --release --target aarch64-apple-ios
-mkdir -p ios/build
-cp ../target/aarch64-apple-ios/release/libflash_runtime.a ios/build/
+echo "Building Flash runtime for iOS..."
+rustup target add aarch64-apple-ios 2>/dev/null || true
+(cd "$FLASH_SDK" && cargo build -p flash-runtime --release --target aarch64-apple-ios)
+mkdir -p "$ROOT/platform/ios/build"
+cp "$FLASH_SDK/target/aarch64-apple-ios/release/libflash_runtime.a" \
+   "$ROOT/platform/ios/build/"
 
-echo "Building flash-runtime for Android (arm64)..."
+echo "Building Flash runtime for Android..."
 rustup target add aarch64-linux-android 2>/dev/null || true
-cargo build -p flash-runtime --release --target aarch64-linux-android
-mkdir -p android/app/src/main/jniLibs/arm64-v8a
-cp ../target/aarch64-linux-android/release/libflash_runtime.so \
-   android/app/src/main/jniLibs/arm64-v8a/
+(cd "$FLASH_SDK" && cargo build -p flash-runtime --release --target aarch64-linux-android)
+mkdir -p "$ROOT/platform/android/app/src/main/jniLibs/arm64-v8a"
+cp "$FLASH_SDK/target/aarch64-linux-android/release/libflash_runtime.so" \
+   "$ROOT/platform/android/app/src/main/jniLibs/arm64-v8a/"
 
-echo "Done. Link ios/build/libflash_runtime.a in Xcode or run Android app."
+echo "✓ Done. Open platform/ios/FlashApp.xcodeproj or platform/android in Android Studio."
 "#;
 
 const IOS_APP_DELEGATE: &str = r#"import UIKit
@@ -211,7 +388,6 @@ const IOS_INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 "#;
 
-// Copied from platform/ios/FlashHost/FlashHost.swift — keep in sync.
 const IOS_FLASH_HOST: &str = include_str!("../../platform/ios/FlashHost/FlashHost.swift");
 
 const IOS_PBXPROJ: &str = r#"// !$*UTF8*$!
@@ -264,14 +440,12 @@ const IOS_PBXPROJ: &str = r#"// !$*UTF8*$!
 }
 "#;
 
-const IOS_README: &str = r#"# Flash iOS app
+const IOS_README: &str = r#"# Flash iOS
 
-1. Run `../scripts/build-rust.sh` from the repo root (links `libflash_runtime.a`).
-2. Open `FlashApp.xcodeproj` in Xcode.
-3. Add `FlashHost.swift`, `AppDelegate.swift`, `SceneDelegate.swift` to the target if not auto-linked.
-4. Link `build/libflash_runtime.a` + set Library Search Paths to `$(PROJECT_DIR)/build`.
-5. Other Linker Flags: `-ObjC`
-6. `FlashHost.shared.registerWithRust()` runs in AppDelegate — UI mounts via Rust → UIKit.
+1. From app root: `./scripts/build-rust.sh`
+2. Open `FlashApp.xcodeproj` in Xcode
+3. Link `build/libflash_runtime.a`, Library Search Paths → `$(PROJECT_DIR)/build`
+4. Other Linker Flags: `-ObjC`
 "#;
 
 const ANDROID_SETTINGS: &str = r#"pluginManagement {
@@ -357,17 +531,15 @@ class MainActivity : AppCompatActivity() {
         val root = FrameLayout(this)
         FlashHost.rootView = root
         setContentView(root)
-        // Rust runtime mounts UI via JNI → FlashHost.applyOps()
     }
 }
 "#;
 
 const ANDROID_FLASH_HOST: &str = include_str!("../../platform/android/flash-host/src/main/kotlin/com/flash/FlashHost.kt");
 
-const ANDROID_README: &str = r#"# Flash Android app
+const ANDROID_README: &str = r#"# Flash Android
 
-1. Run `../scripts/build-rust.sh` — copies `libflash_runtime.so` to `jniLibs/arm64-v8a/`.
-2. Open `android/` in Android Studio.
-3. `FlashHost.init(context)` + `FlashHost.rootView` set in MainActivity.
-4. Rust `.so` calls `FlashHost.applyOps()` each frame; taps call `nativeFireHandler`.
+1. From app root: `./scripts/build-rust.sh`
+2. Open this folder in Android Studio
+3. Run on emulator or device
 "#;

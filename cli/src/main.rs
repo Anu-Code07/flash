@@ -17,6 +17,7 @@ use std::thread;
 
 mod create;
 mod dev;
+mod doctor;
 
 use flash_driver::compile;
 use flash_ir::HandlerId;
@@ -75,7 +76,10 @@ fn main() {
         }
         "dev" => {
             let (path, native) = parse_dev_args(&args);
-            dev::run_dev(Path::new(&path), native);
+            dev::run_dev(path.as_deref().map(Path::new), native);
+        }
+        "doctor" | "setup" => {
+            doctor::run_doctor();
         }
         "create" => {
             let name = args.get(2).expect("usage: flash create <name> [ios|android|all]");
@@ -98,19 +102,15 @@ enum RunMode {
     Android,
 }
 
-fn parse_dev_args(args: &[String]) -> (String, bool) {
-    let mut path = String::new();
+fn parse_dev_args(args: &[String]) -> (Option<String>, bool) {
+    let mut path = None;
     let mut native = false;
     for arg in args.iter().skip(2) {
         if arg == "--native" {
             native = true;
-        } else if !arg.starts_with('-') && path.is_empty() {
-            path = arg.clone();
+        } else if !arg.starts_with('-') && path.is_none() {
+            path = Some(arg.clone());
         }
-    }
-    if path.is_empty() {
-        eprintln!("usage: flash dev [--native] <file.ui>");
-        process::exit(1);
     }
     (path, native)
 }
@@ -366,9 +366,13 @@ fn print_usage() {
            flash build [ios|android]  Build instructions for native hosts\n\
            flash platforms          List mobile/web targets\n\
            flash docs [--port N]    Serve language documentation site\n\
-           flash dev <file.ui>      Watch file + hot reload on save\n\
-           flash dev --native <f>   Native hot reload via flash_host_apply_ops\n\
-           flash create <name>      Scaffold iOS/Android app + Rust lib link\n\
-           flash help               Show this help"
+           flash dev [file.ui]      Hot reload (uses flash.toml if no file)\n\
+           flash dev --native       Native hot reload via flash_host_apply_ops\n\
+           flash create <name>      Scaffold clean-arch iOS/Android app\n\
+           flash doctor             Verify toolchain (like flutter doctor)\n\
+           flash help               Show this help\n\
+         \n\
+         Install SDK:\n\
+           curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash"
     );
 }

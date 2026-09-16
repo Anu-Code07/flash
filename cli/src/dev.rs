@@ -2,17 +2,22 @@
 
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
 use flash_driver::compile;
 use flash_runtime::{DevSession, HotReloadKind, NativeDevSession};
 
+use crate::doctor;
+
 const POLL_MS: u64 = 300;
 
-pub fn run_dev(path: &Path, native: bool) {
-    let initial = fs::read_to_string(path).expect("failed to read .ui file");
+/// Run dev server. If `path` is None, reads entry from `flash.toml` in cwd.
+pub fn run_dev(path: Option<&Path>, native: bool) {
+    let path = resolve_dev_path(path);
+    let initial = fs::read_to_string(&path).expect("failed to read .ui file");
     let result = compile(&initial).expect("initial compile failed");
     let screen = result
         .ir
@@ -22,10 +27,22 @@ pub fn run_dev(path: &Path, native: bool) {
         .expect("no screen in .ui file");
 
     if native {
-        run_native_dev(path, screen);
+        run_native_dev(&path, screen);
     } else {
-        run_mock_dev(path, screen);
+        run_mock_dev(&path, screen);
     }
+}
+
+fn resolve_dev_path(path: Option<&Path>) -> PathBuf {
+    if let Some(p) = path {
+        return p.to_path_buf();
+    }
+    if let Some(entry) = doctor::read_flash_entry(Path::new("flash.toml")) {
+        return PathBuf::from(entry);
+    }
+    eprintln!("usage: flash dev [--native] [file.ui]");
+    eprintln!("  or run inside a Flash project (flash.toml with entry = \"...\")");
+    process::exit(1);
 }
 
 fn run_mock_dev(path: &Path, screen: flash_ir::ScreenIr) {

@@ -96,21 +96,17 @@
     </div>
 
     <h2 style="margin:3rem 0 1rem;">Quick start</h2>
-    <pre><code><span class="cm"># 1. Clone &amp; install CLI (adds `flash` to ~/.cargo/bin)</span>
-git clone https://github.com/Anu-Code07/flash.git
-cd flash
-./scripts/install-flash.sh
+    <pre><code><span class="cm"># 1. Install SDK (one command — like Flutter)</span>
+curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash
+source ~/.zshrc
 
-<span class="cm"># Or run without installing:</span>
-<span class="cm"># cargo run -p flash-cli -- create MyApp all</span>
+<span class="cm"># 2. Create app + hot reload</span>
+flash create my_app
+cd my_app
+flash dev
 
-<span class="cm"># 2. Create a mobile app</span>
-flash create MyApp all
-cd MyApp
-
-<span class="cm"># 3. Dev + native hot reload</span>
-flash dev --native ui/home.ui
-flash run --native ui/home.ui</code></pre>
+<span class="cm"># 3. Verify toolchain</span>
+flash doctor</code></pre>
 
     <pre><code><span class="cm">// ui/screens/home.ui</span>
 <span class="kw">screen</span> Home {
