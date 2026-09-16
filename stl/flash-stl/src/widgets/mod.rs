@@ -256,6 +256,16 @@ mod tests {
     }
 
     #[test]
+    fn phase_5c_priority_widgets_exist() {
+        for name in [
+            "Switch", "AppBar", "TabBar", "Modal", "Sheet", "Icon",
+            "Checkbox", "Divider", "ProgressBar", "SectionList", "Avatar", "Badge",
+        ] {
+            assert!(widget_by_name(name).is_some(), "missing widget: {}", name);
+        }
+    }
+
+    #[test]
     fn flash_exclusive_widgets_exist() {
         assert!(widget_by_name("AsyncView").is_some());
         assert!(widget_by_name("PinField").is_some());

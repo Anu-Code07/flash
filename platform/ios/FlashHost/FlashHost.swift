@@ -1,22 +1,9 @@
-// Flash iOS native renderer — UIKit mapping for 10 core widgets.
+// Flash iOS native renderer — UIKit mapping (stable widget IDs from flash-stl).
 // Wire: Rust static lib calls flash_host_register() at launch.
 
 import UIKit
 
-// MARK: - Widget kinds (stable IDs from stl/flash-stl/src/widgets/core.rs)
-
-enum FlashWidgetKind: UInt16 {
-    case text = 0
-    case button = 1
-    case column = 2
-    case row = 3
-    case stack = 4
-    case image = 5
-    case textField = 6
-    case scrollView = 7
-    case list = 8
-    case loading = 9
-}
+// Widget kind IDs: stl/flash-stl/src/widgets/*.rs
 
 enum FlashPropKey: UInt16 {
     case text = 0
@@ -81,10 +68,21 @@ enum FlashPropKey: UInt16 {
         case .text:
             if let label = view as? UILabel { label.text = text }
             else if let field = view as? UITextField { field.text = text }
+            else if let iv = view as? UIImageView, let img = UIImage(systemName: text) {
+                iv.image = img
+            }
+            else if view.accessibilityIdentifier == "flash-badge" {
+                (view.subviews.first as? UILabel)?.text = text
+            }
         case .title:
             if let button = view as? UIButton { button.setTitle(text, for: .normal) }
         case .value:
             if let field = view as? UITextField { field.text = text }
+            else if let sw = view as? UISwitch { sw.isOn = text == "1" || text == "true" }
+            else if let progress = view as? UIProgressView { progress.progress = Float(text) ?? 0 }
+            else if let check = view as? UIButton, check.accessibilityIdentifier == "flash-checkbox" {
+                check.isSelected = text == "1" || text == "true"
+            }
         case .src:
             if let iv = view as? UIImageView, let url = URL(string: text) {
                 URLSession.shared.dataTask(with: url) { data, _, _ in
@@ -125,37 +123,37 @@ enum FlashPropKey: UInt16 {
     // MARK: - View factory
 
     private func makeView(kind: UInt16) -> UIView {
-        switch FlashWidgetKind(rawValue: kind) {
-        case .text:
+        switch kind {
+        case 0: // Text
             let label = UILabel()
             label.numberOfLines = 0
             return label
-        case .button:
+        case 1: // Button
             let button = UIButton(type: .system)
             button.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
             return button
-        case .column:
+        case 2: // Column
             let stack = UIStackView()
             stack.axis = .vertical
             stack.alignment = .fill
             stack.spacing = 8
             return stack
-        case .row:
+        case 3: // Row
             let stack = UIStackView()
             stack.axis = .horizontal
             stack.alignment = .center
             stack.spacing = 8
             return stack
-        case .stack:
+        case 4: // Stack
             return UIView()
-        case .image:
+        case 5: // Image
             let iv = UIImageView()
             iv.contentMode = .scaleAspectFit
             iv.clipsToBounds = true
             return iv
-        case .textField:
+        case 6: // TextField
             return UITextField()
-        case .scrollView:
+        case 7: // ScrollView
             let sv = UIScrollView()
             let content = UIStackView()
             content.axis = .vertical
@@ -169,10 +167,71 @@ enum FlashPropKey: UInt16 {
                 content.widthAnchor.constraint(equalTo: sv.widthAnchor),
             ])
             return sv
-        case .list:
-            return UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
-        case .loading:
+        case 8, 46: // List, SectionList
+            return UITableView(frame: .zero, style: .grouped)
+        case 9: // Loading
             return UIActivityIndicatorView(style: .medium)
+        case 20: // Icon
+            let iv = UIImageView()
+            iv.contentMode = .scaleAspectFit
+            iv.tintColor = .label
+            return iv
+        case 21: // Avatar
+            let iv = UIImageView()
+            iv.contentMode = .scaleAspectFill
+            iv.layer.cornerRadius = 24
+            iv.clipsToBounds = true
+            return iv
+        case 22: // Badge
+            let container = UIView()
+            container.accessibilityIdentifier = "flash-badge"
+            let label = UILabel()
+            label.font = .systemFont(ofSize: 11, weight: .bold)
+            label.textColor = .white
+            label.backgroundColor = .systemRed
+            label.textAlignment = .center
+            label.layer.cornerRadius = 8
+            label.clipsToBounds = true
+            container.addSubview(label)
+            return container
+        case 23: // Divider
+            let line = UIView()
+            line.backgroundColor = .separator
+            return line
+        case 26: // ProgressBar
+            return UIProgressView(progressViewStyle: .default)
+        case 31: // Switch
+            let sw = UISwitch()
+            sw.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+            return sw
+        case 32: // Checkbox
+            let btn = UIButton(type: .system)
+            btn.accessibilityIdentifier = "flash-checkbox"
+            btn.setImage(UIImage(systemName: "square"), for: .normal)
+            btn.setImage(UIImage(systemName: "checkmark.square.fill"), for: .selected)
+            btn.addTarget(self, action: #selector(buttonTapped(_:)), for: .touchUpInside)
+            return btn
+        case 51: // AppBar
+            let bar = UIStackView()
+            bar.axis = .horizontal
+            bar.alignment = .center
+            bar.spacing = 8
+            bar.backgroundColor = .secondarySystemBackground
+            bar.isLayoutMarginsRelativeArrangement = true
+            bar.layoutMargins = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
+            return bar
+        case 52: // TabBar
+            let tabs = UIStackView()
+            tabs.axis = .horizontal
+            tabs.distribution = .fillEqually
+            tabs.backgroundColor = .secondarySystemBackground
+            return tabs
+        case 54, 55, 69: // Modal, Sheet, BottomSheet
+            let sheet = UIView()
+            sheet.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.98)
+            sheet.layer.cornerRadius = 12
+            sheet.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            return sheet
         default:
             return UIView()
         }
@@ -194,6 +253,17 @@ enum FlashPropKey: UInt16 {
     }
 
     @objc private func buttonTapped(_ sender: UIButton) {
+        if sender.accessibilityIdentifier == "flash-checkbox" {
+            sender.isSelected.toggle()
+        }
+        fireHandler(for: sender)
+    }
+
+    @objc private func switchChanged(_ sender: UISwitch) {
+        fireHandler(for: sender)
+    }
+
+    private func fireHandler(for sender: UIView) {
         guard let handle = views.first(where: { $0.value === sender })?.key,
               let handlerId = handlers[handle] else { return }
         flash_fire_handler(handlerId)

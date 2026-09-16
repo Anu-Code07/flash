@@ -1,0 +1,41 @@
+screen PriorityShowcase {
+  @state notifications: int = 3
+  @state darkMode: int = 0
+
+  Column {
+    AppBar {
+      Text(text: "Settings")
+    }
+
+    Row {
+      Icon("bell.fill")
+      Text(text: "Notifications")
+      Badge(text: "{notifications}")
+      Switch {
+        darkMode = 1
+      }
+    }
+
+    Divider()
+
+    Row {
+      Avatar(src: "https://example.com/user.jpg")
+      Column {
+        Text(text: "Profile")
+        Text(text: "Manage account")
+      }
+    }
+
+    Checkbox {
+      darkMode = 1
+    }
+
+    ProgressBar(value: "65")
+
+    TabBar {
+      Text(text: "Home")
+      Text(text: "Search")
+      Text(text: "Profile")
+    }
+  }
+}

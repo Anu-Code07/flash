@@ -9,7 +9,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Flash Android native renderer — View system mapping for 10 core widgets.
+ * Flash Android native renderer — stable widget IDs from flash-stl.
  * Rust .so calls [applyOps] with encoded command buffer each frame.
  */
 object FlashHost {
@@ -22,8 +22,7 @@ object FlashHost {
         appContext = context.applicationContext
     }
 
-    // ── Widget kinds (stable IDs from widgets/core.rs) ─────────────────────
-
+    // Widget kind IDs — stl/flash-stl/src/widgets/*.rs
     private const val TEXT = 0
     private const val BUTTON = 1
     private const val COLUMN = 2
@@ -34,6 +33,19 @@ object FlashHost {
     private const val SCROLL_VIEW = 7
     private const val LIST = 8
     private const val LOADING = 9
+    private const val ICON = 20
+    private const val AVATAR = 21
+    private const val BADGE = 22
+    private const val DIVIDER = 23
+    private const val PROGRESS_BAR = 26
+    private const val SWITCH = 31
+    private const val CHECKBOX = 32
+    private const val SECTION_LIST = 46
+    private const val APP_BAR = 51
+    private const val TAB_BAR = 52
+    private const val MODAL = 54
+    private const val SHEET = 55
+    private const val BOTTOM_SHEET = 69
 
     private const val PROP_TEXT = 0
     private const val PROP_TITLE = 1
@@ -84,7 +96,12 @@ object FlashHost {
                 is EditText -> view.setText(text)
             }
             PROP_TITLE -> if (view is Button) view.text = text
-            PROP_VALUE -> if (view is EditText) view.setText(text)
+            PROP_VALUE -> when (view) {
+                is EditText -> view.setText(text)
+                is Switch -> view.isChecked = text == "1" || text == "true"
+                is CheckBox -> view.isChecked = text == "1" || text == "true"
+                is ProgressBar -> view.progress = text.toIntOrNull() ?: 0
+            }
             PROP_SRC -> if (view is ImageView) {
                 // URL loading via Coil/Glide in production apps
             }
@@ -106,31 +123,61 @@ object FlashHost {
         views.remove(handle)
     }
 
-    private fun makeView(kind: Int): View {
-        return when (kind) {
-            TEXT -> TextView(appContext)
-            BUTTON -> Button(appContext).apply {
-                setOnClickListener {
-                    val handle = views.entries.find { it.value === this }?.key
-                    if (handle != null) handlers[handle]?.let { id ->
-                        nativeFireHandler(id)
-                    }
-                }
+    private fun makeView(kind: Int): View = when (kind) {
+        TEXT -> TextView(appContext)
+        BUTTON -> clickableButton()
+        COLUMN -> LinearLayout(appContext).apply { orientation = LinearLayout.VERTICAL }
+        ROW -> LinearLayout(appContext).apply { orientation = LinearLayout.HORIZONTAL }
+        STACK -> FrameLayout(appContext)
+        IMAGE, ICON, AVATAR -> ImageView(appContext).apply {
+            if (kind == AVATAR) {
+                clipToOutline = true
             }
-            COLUMN -> LinearLayout(appContext).apply { orientation = LinearLayout.VERTICAL }
-            ROW -> LinearLayout(appContext).apply { orientation = LinearLayout.HORIZONTAL }
-            STACK -> FrameLayout(appContext)
-            IMAGE -> ImageView(appContext)
-            TEXT_FIELD -> EditText(appContext)
-            SCROLL_VIEW -> ScrollView(appContext).apply {
-                addView(LinearLayout(appContext).apply {
-                    orientation = LinearLayout.VERTICAL
-                })
-            }
-            LIST -> RecyclerView(appContext)
-            LOADING -> ProgressBar(appContext)
-            else -> View(appContext)
         }
+        TEXT_FIELD -> EditText(appContext)
+        SCROLL_VIEW -> ScrollView(appContext).apply {
+            addView(LinearLayout(appContext).apply { orientation = LinearLayout.VERTICAL })
+        }
+        LIST, SECTION_LIST -> RecyclerView(appContext)
+        LOADING -> ProgressBar(appContext).apply { isIndeterminate = true }
+        BADGE -> TextView(appContext).apply {
+            setBackgroundColor(0xFFE53935.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 11f
+            setPadding(8, 4, 8, 4)
+        }
+        DIVIDER -> View(appContext).apply {
+            setBackgroundColor(0xFFE0E0E0.toInt())
+        }
+        PROGRESS_BAR -> ProgressBar(appContext, null, android.R.attr.progressBarStyleHorizontal)
+        SWITCH -> Switch(appContext).apply { wireHandler(this) }
+        CHECKBOX -> CheckBox(appContext).apply { wireHandler(this) }
+        APP_BAR -> LinearLayout(appContext).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(0xFFF5F5F5.toInt())
+            setPadding(32, 24, 32, 24)
+        }
+        TAB_BAR -> LinearLayout(appContext).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(0xFFF5F5F5.toInt())
+        }
+        MODAL, SHEET, BOTTOM_SHEET -> FrameLayout(appContext).apply {
+            setBackgroundColor(0xFFFFFFFF.toInt())
+        }
+        else -> View(appContext)
+    }
+
+    private fun clickableButton(): Button = Button(appContext).apply {
+        setOnClickListener { fireHandlerFor(this) }
+    }
+
+    private fun wireHandler(view: View) {
+        view.setOnClickListener { fireHandlerFor(view) }
+    }
+
+    private fun fireHandlerFor(view: View) {
+        val handle = views.entries.find { it.value === view }?.key
+        if (handle != null) handlers[handle]?.let { nativeFireHandler(it) }
     }
 
     private fun decodeValueString(buf: ByteBuffer): String {

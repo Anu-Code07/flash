@@ -114,16 +114,21 @@
       </div>
     </div>
 
-    <h2>Next components (Phase 5c)</h2>
+    <h2>Phase 5c — priority components (shipped)</h2>
+    <p>Catalog + native UIKit/Android mapping. Example: <code>examples/priority_widgets/showcase.ui</code></p>
     <table>
-      <tr><th>Priority</th><th>Component</th><th>Flutter</th><th>React Native</th></tr>
-      <tr><td>P0</td><td><code>Switch</code></td><td>Switch</td><td>Switch</td></tr>
-      <tr><td>P0</td><td><code>AppBar</code></td><td>AppBar</td><td>navigation header</td></tr>
-      <tr><td>P0</td><td><code>TabBar</code></td><td>BottomNavigationBar</td><td>tab navigator</td></tr>
-      <tr><td>P0</td><td><code>Modal</code> / <code>Sheet</code></td><td>BottomSheet</td><td>Modal</td></tr>
-      <tr><td>P0</td><td><code>Icon</code></td><td>Icon</td><td>icon font</td></tr>
-      <tr><td>P1</td><td><code>Checkbox</code>, <code>Divider</code>, <code>ProgressBar</code></td><td>Checkbox, Divider, LinearProgressIndicator</td><td>checkbox lib, View border, ProgressBarAndroid</td></tr>
-      <tr><td>P1</td><td><code>SectionList</code>, <code>Avatar</code>, <code>Badge</code></td><td>ListView sections, CircleAvatar, Badge</td><td>SectionList, image, badge lib</td></tr>
+      <tr><th>Priority</th><th>Flash</th><th>iOS</th><th>Android</th><th>Status</th></tr>
+      <tr><td>P0</td><td><code>Switch</code></td><td>UISwitch</td><td>Switch</td><td>✓</td></tr>
+      <tr><td>P0</td><td><code>AppBar</code></td><td>UINavigationBar stack</td><td>Toolbar</td><td>✓</td></tr>
+      <tr><td>P0</td><td><code>TabBar</code></td><td>UITabBar stack</td><td>BottomNavigationView</td><td>✓</td></tr>
+      <tr><td>P0</td><td><code>Modal</code> / <code>Sheet</code></td><td>UIViewController sheet</td><td>BottomSheetDialog</td><td>✓</td></tr>
+      <tr><td>P0</td><td><code>Icon</code></td><td>SF Symbol</td><td>ImageView</td><td>✓</td></tr>
+      <tr><td>P1</td><td><code>Checkbox</code></td><td>UIButton checkbox</td><td>CheckBox</td><td>✓</td></tr>
+      <tr><td>P1</td><td><code>Divider</code></td><td>UIView separator</td><td>View</td><td>✓</td></tr>
+      <tr><td>P1</td><td><code>ProgressBar</code></td><td>UIProgressView</td><td>ProgressBar</td><td>✓</td></tr>
+      <tr><td>P1</td><td><code>SectionList</code></td><td>UITableView grouped</td><td>RecyclerView</td><td>✓</td></tr>
+      <tr><td>P1</td><td><code>Avatar</code></td><td>UIImageView</td><td>ShapeableImageView</td><td>✓</td></tr>
+      <tr><td>P1</td><td><code>Badge</code></td><td>UILabel chip</td><td>TextView</td><td>✓</td></tr>
     </table>
   </div>
 
