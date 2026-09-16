@@ -52,6 +52,9 @@ enum FlashPropKey: UInt16 {
             set_handler: { handle, handlerId in
                 FlashHost.shared.handlers[handle] = handlerId
             },
+            set_frame: { handle, x, y, width, height in
+                FlashHost.shared.setFrame(handle: handle, x: x, y: y, width: width, height: height)
+            },
             commit: { FlashHost.shared.layoutIfNeeded() }
         ))
     }
@@ -106,6 +109,12 @@ enum FlashPropKey: UInt16 {
     func remove(handle: UInt32) {
         views[handle]?.removeFromSuperview()
         views.removeValue(forKey: handle)
+    }
+
+    func setFrame(handle: UInt32, x: Float, y: Float, width: Float, height: Float) {
+        guard let view = views[handle] else { return }
+        view.frame = CGRect(x: CGFloat(x), y: CGFloat(y), width: CGFloat(width), height: CGFloat(height))
+        view.translatesAutoresizingMaskIntoConstraints = true
     }
 
     func layoutIfNeeded() {
@@ -208,5 +217,6 @@ struct FlashHostVTable {
     var insert_child: (@convention(c) (UInt32, UInt32, UInt32) -> Void)?
     var remove: (@convention(c) (UInt32) -> Void)?
     var set_handler: (@convention(c) (UInt32, UInt32) -> Void)?
+    var set_frame: (@convention(c) (UInt32, Float, Float, Float, Float) -> Void)?
     var commit: (@convention(c) () -> Void)?
 }

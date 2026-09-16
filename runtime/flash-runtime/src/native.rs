@@ -1,11 +1,14 @@
 //! Native rendering — mount UI tree via `NativeRenderer` → iOS UIKit / Android View.
 
+use std::sync::{Arc, Mutex};
+
 use flash_ir::{HandlerId, IrExpr, NodeId, PropKey, ScreenIr, UpdateOp};
 use flash_platform::{
-    host::ir_prop_to_platform, native_renderer::set_node_prop, HostCallbacks, NativeRenderer,
-    PlatformRenderer, PropValue,
+    host::ir_prop_to_platform, layout_engine::LayoutEngine, native_renderer::set_node_prop,
+    HostCallbacks, NativeRenderer, PlatformRenderer, PropValue,
 };
 
+use crate::dispatch::{register_session, unregister_session};
 use crate::reactive::ReactiveEngine;
 use crate::renderer::PropValue as RuntimePropValue;
 
@@ -13,6 +16,12 @@ use crate::renderer::PropValue as RuntimePropValue;
 pub fn mount_screen(engine: &ReactiveEngine, renderer: &mut NativeRenderer) {
     build_tree(engine, renderer);
     write_props(engine, renderer);
+    wire_handlers(engine, renderer);
+    apply_layout(engine, renderer);
+    renderer.commit();
+}
+
+fn wire_handlers(engine: &ReactiveEngine, renderer: &mut NativeRenderer) {
     for (node_idx, node) in engine.screen.nodes.iter().enumerate() {
         if let Some(handler) = node.handler {
             if let Some(handle) = renderer.handle_for(NodeId(node_idx as u32)) {
@@ -20,7 +29,15 @@ pub fn mount_screen(engine: &ReactiveEngine, renderer: &mut NativeRenderer) {
             }
         }
     }
-    renderer.commit();
+}
+
+fn apply_layout(engine: &ReactiveEngine, renderer: &mut NativeRenderer) {
+    let frames = LayoutEngine::layout_screen(&engine.screen);
+    for frame in frames {
+        if let Some(handle) = renderer.handle_for(frame.node) {
+            renderer.set_frame(handle, frame.x, frame.y, frame.width, frame.height);
+        }
+    }
 }
 
 /// Flush dirty slots to native props only (fine-grained update).
@@ -141,8 +158,31 @@ impl NativeSession {
         Self { engine, renderer }
     }
 
+    /// Mount and register for `flash_fire_handler` callbacks from Swift/Kotlin.
+    pub fn mount_shared(screen: ScreenIr, host: Box<dyn HostCallbacks>) -> Arc<Mutex<Self>> {
+        let session = Arc::new(Mutex::new(Self::mount(screen, host)));
+        register_session(session.clone());
+        session
+    }
+
+    pub fn unmount_shared(session: &Arc<Mutex<Self>>) {
+        unregister_session();
+        let _ = session;
+    }
+
     pub fn fire_handler(&mut self, handler_id: HandlerId) {
         self.engine.fire_handler(handler_id);
         flush_screen(&mut self.engine, &mut self.renderer);
     }
+}
+
+/// Re-apply all props after a props-only hot reload.
+pub fn remount_props_native(engine: &ReactiveEngine, renderer: &mut NativeRenderer) {
+    write_props(engine, renderer);
+    renderer.commit();
+}
+
+/// Full tree remount after structural hot restart.
+pub fn remount_screen_native(engine: &ReactiveEngine, renderer: &mut NativeRenderer) {
+    mount_screen(engine, renderer);
 }

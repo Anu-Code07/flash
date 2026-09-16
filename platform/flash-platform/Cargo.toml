@@ -12,3 +12,7 @@ default = []
 ios = []
 android = []
 web = []
+
+[dev-dependencies]
+flash-span = { workspace = true }
+flash-stl = { workspace = true }

@@ -15,6 +15,7 @@ pub enum DecodedOp {
     InsertChild { parent: u32, child: u32, index: u32 },
     Remove { handle: u32 },
     SetHandler { handle: u32, handler_id: u32 },
+    SetFrame { handle: u32, x: f32, y: f32, width: f32, height: f32 },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -64,6 +65,21 @@ pub fn decode_ops(bytes: &[u8]) -> Result<Vec<DecodedOp>, DecodeError> {
                 i = nh;
                 ops.push(DecodedOp::SetHandler { handle, handler_id });
             }
+            5 => {
+                let (handle, ni) = read_u32(bytes, i)?;
+                let (x, nx) = read_f32(bytes, ni)?;
+                let (y, ny) = read_f32(bytes, nx)?;
+                let (w, nw) = read_f32(bytes, ny)?;
+                let (h, nh) = read_f32(bytes, nw)?;
+                i = nh;
+                ops.push(DecodedOp::SetFrame {
+                    handle,
+                    x,
+                    y,
+                    width: w,
+                    height: h,
+                });
+            }
             _ => return Err(DecodeError::UnknownOp(tag)),
         }
     }
@@ -111,6 +127,14 @@ fn read_i64(bytes: &[u8], i: usize) -> Result<(i64, usize), DecodeError> {
     }
     let v = i64::from_le_bytes(bytes[i..i + 8].try_into().unwrap());
     Ok((v, i + 8))
+}
+
+fn read_f32(bytes: &[u8], i: usize) -> Result<(f32, usize), DecodeError> {
+    if i + 4 > bytes.len() {
+        return Err(DecodeError::UnexpectedEof);
+    }
+    let v = f32::from_le_bytes(bytes[i..i + 4].try_into().unwrap());
+    Ok((v, i + 4))
 }
 
 fn read_f64(bytes: &[u8], i: usize) -> Result<(f64, usize), DecodeError> {
@@ -166,6 +190,7 @@ pub struct ViewState {
     pub kind: u16,
     pub props: std::collections::HashMap<u16, DecodedValue>,
     pub children: Vec<u32>,
+    pub frame: Option<(f32, f32, f32, f32)>,
 }
 
 impl HostCallbacks for InProcessHost {
@@ -188,6 +213,7 @@ impl InProcessHost {
                         kind,
                         props: std::collections::HashMap::new(),
                         children: Vec::new(),
+                        frame: None,
                     },
                 );
             }
@@ -211,6 +237,11 @@ impl InProcessHost {
                 self.views.remove(&handle);
             }
             DecodedOp::SetHandler { .. } => {}
+            DecodedOp::SetFrame { handle, x, y, width, height } => {
+                if let Some(v) = self.views.get_mut(&handle) {
+                    v.frame = Some((x, y, width, height));
+                }
+            }
         }
     }
 }

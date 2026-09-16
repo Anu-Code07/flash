@@ -54,7 +54,16 @@ object FlashHost {
                     val handle = buf.int
                     handlers[handle] = buf.int
                 }
+                5 -> setFrame(buf.int, buf.float, buf.float, buf.float, buf.float)
             }
+        }
+    }
+
+    private fun setFrame(handle: Int, x: Float, y: Float, width: Float, height: Float) {
+        views[handle]?.let { view ->
+            val w = width.toInt().coerceAtLeast(1)
+            val h = height.toInt().coerceAtLeast(1)
+            view.layout(x.toInt(), y.toInt(), x.toInt() + w, y.toInt() + h)
         }
     }
 

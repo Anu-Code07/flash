@@ -43,6 +43,7 @@ pub enum CommandOp {
     InsertChild { parent: u32, child: u32, index: u32 },
     Remove { handle: u32 },
     SetHandler { handle: u32, handler_id: u32 },
+    SetFrame { handle: u32, x: f32, y: f32, width: f32, height: f32 },
 }
 
 impl CommandBuffer {
@@ -89,6 +90,20 @@ impl CommandBuffer {
                     buf.push(4);
                     buf.extend_from_slice(&handle.to_le_bytes());
                     buf.extend_from_slice(&handler_id.to_le_bytes());
+                }
+                CommandOp::SetFrame {
+                    handle,
+                    x,
+                    y,
+                    width,
+                    height,
+                } => {
+                    buf.push(5);
+                    buf.extend_from_slice(&handle.to_le_bytes());
+                    buf.extend_from_slice(&x.to_le_bytes());
+                    buf.extend_from_slice(&y.to_le_bytes());
+                    buf.extend_from_slice(&width.to_le_bytes());
+                    buf.extend_from_slice(&height.to_le_bytes());
                 }
             }
         }
@@ -142,6 +157,7 @@ pub trait PlatformRenderer {
     fn insert_child(&mut self, parent: Self::Handle, child: Self::Handle, index: u32);
     fn remove(&mut self, handle: Self::Handle);
     fn set_handler(&mut self, handle: Self::Handle, handler_id: u32);
+    fn set_frame(&mut self, handle: Self::Handle, x: f32, y: f32, width: f32, height: f32);
     /// One boundary crossing per frame — flushes the command buffer to native UI.
     fn commit(&mut self);
 }

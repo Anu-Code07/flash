@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::thread;
 
+mod create;
 mod dev;
 
 use flash_driver::compile;
@@ -73,8 +74,13 @@ fn main() {
             serve_docs(port);
         }
         "dev" => {
-            let path = args.get(2).expect("usage: flash dev <file.ui>");
-            dev::run_dev(Path::new(path));
+            let (path, native) = parse_dev_args(&args);
+            dev::run_dev(Path::new(&path), native);
+        }
+        "create" => {
+            let name = args.get(2).expect("usage: flash create <name> [ios|android|all]");
+            let target = args.get(3).map(|s| s.as_str()).unwrap_or("all");
+            create::run_create(name, target);
         }
         "help" | "--help" | "-h" => print_usage(),
         cmd => {
@@ -90,6 +96,23 @@ enum RunMode {
     Native,
     Ios,
     Android,
+}
+
+fn parse_dev_args(args: &[String]) -> (String, bool) {
+    let mut path = String::new();
+    let mut native = false;
+    for arg in args.iter().skip(2) {
+        if arg == "--native" {
+            native = true;
+        } else if !arg.starts_with('-') && path.is_empty() {
+            path = arg.clone();
+        }
+    }
+    if path.is_empty() {
+        eprintln!("usage: flash dev [--native] <file.ui>");
+        process::exit(1);
+    }
+    (path, native)
 }
 
 fn parse_run_args(args: &[String]) -> (String, RunMode) {
@@ -344,6 +367,8 @@ fn print_usage() {
            flash platforms          List mobile/web targets\n\
            flash docs [--port N]    Serve language documentation site\n\
            flash dev <file.ui>      Watch file + hot reload on save\n\
+           flash dev --native <f>   Native hot reload via flash_host_apply_ops\n\
+           flash create <name>      Scaffold iOS/Android app + Rust lib link\n\
            flash help               Show this help"
     );
 }

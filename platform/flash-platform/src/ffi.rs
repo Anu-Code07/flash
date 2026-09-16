@@ -11,8 +11,8 @@ type SetPropFn = extern "C" fn(handle: u32, key: u16, ptr: *const u8, len: u32);
 type InsertChildFn = extern "C" fn(parent: u32, child: u32, index: u32);
 type RemoveFn = extern "C" fn(handle: u32);
 type SetHandlerFn = extern "C" fn(handle: u32, handler_id: u32);
+type SetFrameFn = extern "C" fn(handle: u32, x: f32, y: f32, width: f32, height: f32);
 type CommitFn = extern "C" fn();
-type ApplyOpsFn = extern "C" fn(ptr: *const u8, len: u32);
 
 /// Function pointers registered by the Swift `FlashHost` at app launch.
 #[repr(C)]
@@ -23,6 +23,7 @@ pub struct FlashHostVTable {
     pub insert_child: InsertChildFn,
     pub remove: RemoveFn,
     pub set_handler: SetHandlerFn,
+    pub set_frame: SetFrameFn,
     pub commit: CommitFn,
 }
 
@@ -32,13 +33,6 @@ static VTABLE: Mutex<Option<FlashHostVTable>> = Mutex::new(None);
 #[no_mangle]
 pub extern "C" fn flash_host_register(vtable: FlashHostVTable) {
     *VTABLE.lock().unwrap() = Some(vtable);
-}
-
-/// Called from Swift/Kotlin when user taps a native button.
-#[no_mangle]
-pub extern "C" fn flash_fire_handler(handler_id: u32) {
-    let _ = handler_id;
-    // Wired by app runtime to ReactiveEngine::fire_handler in Phase 3b.
 }
 
 /// Called from Swift: apply a full encoded command buffer (batch path).
@@ -72,6 +66,9 @@ fn apply_decoded(vt: &FlashHostVTable, op: crate::host::DecodedOp) {
         crate::host::DecodedOp::Remove { handle } => (vt.remove)(handle),
         crate::host::DecodedOp::SetHandler { handle, handler_id } => {
             (vt.set_handler)(handle, handler_id);
+        }
+        crate::host::DecodedOp::SetFrame { handle, x, y, width, height } => {
+            (vt.set_frame)(handle, x, y, width, height);
         }
     }
 }

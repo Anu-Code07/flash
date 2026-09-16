@@ -80,6 +80,16 @@ impl PlatformRenderer for NativeRenderer {
             .push(CommandOp::SetHandler { handle, handler_id });
     }
 
+    fn set_frame(&mut self, handle: Self::Handle, x: f32, y: f32, width: f32, height: f32) {
+        self.buffer.ops.push(CommandOp::SetFrame {
+            handle,
+            x,
+            y,
+            width,
+            height,
+        });
+    }
+
     fn commit(&mut self) {
         if !self.buffer.ops.is_empty() {
             let bytes = self.buffer.encode();
