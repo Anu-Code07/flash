@@ -19,7 +19,7 @@ curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | 
 source ~/.zshrc
 flash doctor
 flash create my_app
-cd my_app && flash dev
+cd my_app && flash run
 ```
 
 Installs Rust (if needed), clones SDK to `~/.flash/sdk`, puts `flash` on PATH.

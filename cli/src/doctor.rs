@@ -4,6 +4,9 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
+use crate::project;
+use crate::ui;
+
 struct Check {
     name: &'static str,
     ok: bool,
@@ -15,29 +18,30 @@ pub fn run_doctor() {
     let checks = collect_checks();
     let mut failures = 0;
 
-    println!("Flash Doctor — checking your environment\n");
+    ui::banner();
+    println!();
+    ui::step("Doctor summary");
 
     for c in &checks {
-        let icon = if c.ok { "✓" } else { "✗" };
-        println!("  [{}] {} — {}", icon, c.name, c.detail);
-        if !c.ok {
+        if c.ok {
+            ui::success(&format!("{} — {}", c.name, c.detail));
+        } else {
             failures += 1;
+            ui::error(&format!("{} — {}", c.name, c.detail));
             if let Some(fix) = c.fix {
-                println!("      → {}", fix);
+                ui::dim(&format!("  → {}", fix));
             }
         }
     }
 
     println!();
     if failures == 0 {
-        println!("All checks passed! You're ready to build Flash apps.");
-        println!("\n  flash create my_app");
-        println!("  cd my_app && flash dev");
+        ui::success("No issues found!");
+        println!();
+        ui::dim("  flash create my_app");
+        ui::dim("  cd my_app && flash run");
     } else {
-        println!(
-            "{} issue(s) found. Fix the items above, then run `flash doctor` again.",
-            failures
-        );
+        ui::warn(&format!("{} issue(s) found.", failures));
         std::process::exit(1);
     }
 }
@@ -150,7 +154,7 @@ fn check_project() -> Check {
             fix: None,
         };
     }
-    let entry = read_flash_entry(toml);
+    let entry = project::read_flash_entry(toml);
     let entry_path = entry.as_deref().unwrap_or("ui/screens/home.ui");
     let ok = Path::new(entry_path).is_file();
     Check {
@@ -208,16 +212,3 @@ fn check_android() -> Check {
     }
 }
 
-/// Minimal `entry = "..."` parse from flash.toml (no extra deps).
-pub fn read_flash_entry(path: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(path).ok()?;
-    for line in text.lines() {
-        let line = line.trim();
-        if line.starts_with("entry") {
-            if let Some((_, val)) = line.split_once('=') {
-                return Some(val.trim().trim_matches('"').to_string());
-            }
-        }
-    }
-    None
-}

@@ -1,15 +1,18 @@
-//! `flash create` — clean-architecture app scaffold (Flutter/RN-style).
+//! `flash create` — clean-architecture app scaffold (Flutter-style).
 
 use std::fs;
 use std::path::Path;
 
+use crate::ui;
+
 pub fn run_create(name: &str, target: &str) {
     let dir = Path::new(name);
     if dir.exists() {
-        eprintln!("Error: '{}' already exists", name);
+        ui::error(&format!("'{}' already exists", name));
         std::process::exit(1);
     }
 
+    ui::create_header(name);
     scaffold_clean_arch(dir, name);
 
     match target {
@@ -25,7 +28,8 @@ pub fn run_create(name: &str, target: &str) {
         }
     }
 
-    print_success(name, target);
+    print_scaffold_tree(name, target);
+    ui::create_done(name);
 }
 
 fn scaffold_clean_arch(dir: &Path, name: &str) {
@@ -40,6 +44,7 @@ fn scaffold_clean_arch(dir: &Path, name: &str) {
     write_file(dir, "ui/screens/home.ui", HOME_UI);
     write_file(dir, "scripts/build-rust.sh", BUILD_RUST_SH);
     write_file(dir, "README.md", &project_readme(name));
+    write_file(dir, ".gitignore", GITIGNORE);
 
     write_file(dir, "crates/presentation/Cargo.toml", PRESENTATION_CARGO);
     write_file(dir, "crates/presentation/src/lib.rs", PRESENTATION_RS);
@@ -86,33 +91,22 @@ fn scaffold_android(dir: &Path) {
     write_file(dir, &format!("{}/README.md", android), ANDROID_README);
 }
 
-fn print_success(name: &str, target: &str) {
-    println!();
-    println!("⚡ Created Flash app '{}'", name);
-    println!();
-    println!("  {}/", name);
-    println!("  ├── ui/screens/          # .ui screens");
-    println!("  ├── crates/");
-    println!("  │   ├── presentation/    # view models → .ui");
-    println!("  │   ├── application/     # use cases");
-    println!("  │   └── infrastructure/  # HTTP, storage");
-    println!("  ├── platform/");
+fn print_scaffold_tree(name: &str, target: &str) {
+    ui::success("Wrote project files");
+    ui::dim(&format!("  {}/", name));
+    ui::dim("    ui/screens/home.ui");
+    ui::dim("    crates/presentation/");
+    ui::dim("    crates/application/");
+    ui::dim("    crates/infrastructure/");
     match target {
-        "ios" => println!("  │   └── ios/             # Xcode project"),
-        "android" => println!("  │   └── android/         # Gradle project"),
+        "ios" => ui::dim("    platform/ios/"),
+        "android" => ui::dim("    platform/android/"),
         _ => {
-            println!("  │   ├── ios/             # Xcode project");
-            println!("  │   └── android/         # Gradle project");
+            ui::dim("    platform/ios/");
+            ui::dim("    platform/android/");
         }
     }
-    println!("  ├── flash.toml");
-    println!("  └── scripts/build-rust.sh");
-    println!();
-    println!("Next:");
-    println!("  cd {}", name);
-    println!("  flash dev              # hot reload (reads flash.toml)");
-    println!("  flash dev --native     # native hot reload");
-    println!("  flash doctor           # verify toolchain");
+    ui::dim("    flash.toml");
 }
 
 fn flash_toml(name: &str) -> String {
@@ -153,8 +147,8 @@ Flash app — clean architecture layout.
 ## Quick start
 
 ```bash
-flash dev              # hot reload (uses flash.toml entry)
-flash dev --native     # native command-buffer hot reload
+flash run              # hot reload (like flutter run)
+flash run -d native    # native hot reload
 flash doctor           # check toolchain
 ./scripts/build-rust.sh   # build native libs for device
 ```
@@ -185,6 +179,15 @@ fn write_file(dir: &Path, rel: &str, content: &str) {
     }
     fs::write(path, content).expect("write template file");
 }
+
+const GITIGNORE: &str = r#"target/
+.platform/
+*.xcuserstate
+.idea/
+.gradle/
+build/
+.DS_Store
+"#;
 
 const WORKSPACE_CARGO: &str = r#"[workspace]
 resolver = "2"

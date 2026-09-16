@@ -1,22 +1,29 @@
-//! `flash dev` — watch `.ui` files, hot reload on save.
+//! `flash dev` / `flash run` — hot reload like `flutter run`.
 
 use std::fs;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::process;
+use std::path::Path;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
 use flash_driver::compile;
 use flash_runtime::{DevSession, HotReloadKind, NativeDevSession};
 
-use crate::doctor;
+use crate::devices::Device;
+use crate::project;
+use crate::ui;
 
 const POLL_MS: u64 = 300;
 
-/// Run dev server. If `path` is None, reads entry from `flash.toml` in cwd.
-pub fn run_dev(path: Option<&Path>, native: bool) {
-    let path = resolve_dev_path(path);
+/// Hot-reload dev loop (default `flash run` experience).
+pub fn run_dev(path: Option<&Path>, device: Device) {
+    let path = project::resolve_ui(path);
+    let proj = project::load();
+    let app_name = proj.map(|p| p.name).unwrap_or_else(|| "app".to_string());
+    let entry = path.display().to_string();
+
+    ui::launch_line(&entry, device.label());
+
     let initial = fs::read_to_string(&path).expect("failed to read .ui file");
     let result = compile(&initial).expect("initial compile failed");
     let screen = result
@@ -26,55 +33,40 @@ pub fn run_dev(path: Option<&Path>, native: bool) {
         .cloned()
         .expect("no screen in .ui file");
 
-    if native {
-        run_native_dev(&path, screen);
-    } else {
-        run_mock_dev(&path, screen);
+    ui::dev_ready(&entry, device.label());
+
+    match device {
+        Device::Simulator => run_mock_dev(&app_name, &path, screen),
+        Device::Native | Device::Ios | Device::Android => run_native_dev(&app_name, &path, screen, device),
     }
 }
 
-fn resolve_dev_path(path: Option<&Path>) -> PathBuf {
-    if let Some(p) = path {
-        return p.to_path_buf();
-    }
-    if let Some(entry) = doctor::read_flash_entry(Path::new("flash.toml")) {
-        return PathBuf::from(entry);
-    }
-    eprintln!("usage: flash dev [--native] [file.ui]");
-    eprintln!("  or run inside a Flash project (flash.toml with entry = \"...\")");
-    process::exit(1);
-}
-
-fn run_mock_dev(path: &Path, screen: flash_ir::ScreenIr) {
+fn run_mock_dev(_app: &str, path: &Path, screen: flash_ir::ScreenIr) {
     let mut session = DevSession::mount(screen);
     let mut last_mtime = file_mtime(path);
     let mut generation = 1u32;
-
-    println!("⚡ Flash dev — hot reload enabled");
-    println!("   Watching: {}", path.display());
-    println!("   Edit the .ui file and save — changes apply in <1s");
-    println!("   Press Ctrl+C to stop\n");
     print_mock_session(&session, generation, "Mounted");
 
     watch_loop(path, &mut last_mtime, || {
         let source = match fs::read_to_string(path) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("✗ Read error: {}", e);
+                ui::error(&format!("Read error: {}", e));
                 return;
             }
         };
         let compiled = match compile(&source) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("✗ Compile error (state preserved):\n{}", e);
+                ui::warn("Compile error (state preserved)");
+                eprintln!("{}", e);
                 return;
             }
         };
         let new_screen = match compiled.ir.screens.first() {
             Some(s) => s.clone(),
             None => {
-                eprintln!("✗ No screen found in .ui file");
+                ui::error("No screen in .ui file");
                 return;
             }
         };
@@ -84,36 +76,40 @@ fn run_mock_dev(path: &Path, screen: flash_ir::ScreenIr) {
     });
 }
 
-fn run_native_dev(path: &Path, screen: flash_ir::ScreenIr) {
+fn run_native_dev(_app: &str, path: &Path, screen: flash_ir::ScreenIr, device: Device) {
+    if device == Device::Ios || device == Device::Android {
+        ui::dim(&format!(
+            "  Device build: open platform/{} in Xcode/Android Studio after ./scripts/build-rust.sh",
+            if device == Device::Ios { "ios" } else { "android" }
+        ));
+        println!();
+    }
+
     let mut session = NativeDevSession::mount(screen);
     let mut last_mtime = file_mtime(path);
     let mut generation = 1u32;
-
-    println!("⚡ Flash dev — native hot reload enabled");
-    println!("   Watching: {}", path.display());
-    println!("   Patches flow through flash_host_apply_ops (in-process host)");
-    println!("   Press Ctrl+C to stop\n");
     print_native_session(&session, generation, "Mounted");
 
     watch_loop(path, &mut last_mtime, || {
         let source = match fs::read_to_string(path) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("✗ Read error: {}", e);
+                ui::error(&format!("Read error: {}", e));
                 return;
             }
         };
         let compiled = match compile(&source) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("✗ Compile error (state preserved):\n{}", e);
+                ui::warn("Compile error (state preserved)");
+                eprintln!("{}", e);
                 return;
             }
         };
         let new_screen = match compiled.ir.screens.first() {
             Some(s) => s.clone(),
             None => {
-                eprintln!("✗ No screen found in .ui file");
+                ui::error("No screen in .ui file");
                 return;
             }
         };
@@ -137,49 +133,35 @@ fn watch_loop(path: &Path, last_mtime: &mut SystemTime, mut on_reload: impl FnMu
 
 fn reload_label(reload: &flash_runtime::HotReloadResult, session: &DevSession) -> String {
     match reload.kind {
-        HotReloadKind::HotReload => {
-            format!(
-                "Hot reload — {} prop(s) patched, state preserved",
-                reload.props_patched
-            )
-        }
-        HotReloadKind::HotRestart => {
-            format!(
-                "Hot restart — tree remounted, {} slot(s) preserved",
-                session.slot_values().len()
-            )
-        }
+        HotReloadKind::HotReload => format!("Hot reload · {} prop(s) patched", reload.props_patched),
+        HotReloadKind::HotRestart => format!(
+            "Hot restart · {} slot(s) preserved",
+            session.slot_values().len()
+        ),
     }
 }
 
 fn native_reload_label(reload: &flash_runtime::HotReloadResult, session: &NativeDevSession) -> String {
     match reload.kind {
-        HotReloadKind::HotReload => {
-            format!(
-                "Native hot reload — {} prop op(s), state preserved",
-                reload.props_patched
-            )
-        }
-        HotReloadKind::HotRestart => {
-            format!(
-                "Native hot restart — {} view(s), {} slot(s) preserved",
-                session.view_count(),
-                session.slot_values().len()
-            )
-        }
+        HotReloadKind::HotReload => format!("Hot reload · {} native op(s)", reload.props_patched),
+        HotReloadKind::HotRestart => format!(
+            "Hot restart · {} views, {} slots",
+            session.view_count(),
+            session.slot_values().len()
+        ),
     }
 }
 
 fn print_mock_session(session: &DevSession, generation: u32, event: &str) {
-    println!("── gen {} ── {}", generation, event);
+    ui::dim(&format!("── gen {} ── {}", generation, event));
     for line in session.renderer.describe() {
-        println!("{}", line);
+        println!("  {}", line);
     }
     print_slots(session.slot_values());
 }
 
 fn print_native_session(session: &NativeDevSession, generation: u32, event: &str) {
-    println!("── gen {} ── {}", generation, event);
+    ui::dim(&format!("── gen {} ── {}", generation, event));
     for line in session.describe_views() {
         println!("  {}", line);
     }
@@ -188,7 +170,7 @@ fn print_native_session(session: &NativeDevSession, generation: u32, event: &str
 
 fn print_slots(slots: &[i64]) {
     if !slots.is_empty() {
-        print!("   slots:");
+        print!("  slots:");
         for (i, v) in slots.iter().enumerate() {
             print!(" slot{}={}", i, v);
         }

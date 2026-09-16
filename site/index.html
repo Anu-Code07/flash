@@ -100,12 +100,13 @@
 curl -fsSL https://raw.githubusercontent.com/Anu-Code07/flash/main/install.sh | bash
 source ~/.zshrc
 
-<span class="cm"># 2. Create app + hot reload</span>
+<span class="cm"># 2. Create app + run (hot reload by default)</span>
 flash create my_app
 cd my_app
-flash dev
+flash run
 
-<span class="cm"># 3. Verify toolchain</span>
+<span class="cm"># 3. Other commands</span>
+flash devices
 flash doctor</code></pre>
 
     <pre><code><span class="cm">// ui/screens/home.ui</span>
